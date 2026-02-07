@@ -33,7 +33,7 @@ export function OnlineGameForm() {
     <div className="space-y-4">
       <Input
         type="text"
-        placeholder="Enter Room Code (or leave blank)"
+        placeholder="Enter room code (optional)"
         value={roomId}
         onChange={(e) => setRoomId(e.target.value)}
         className="text-center bg-background"

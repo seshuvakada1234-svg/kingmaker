@@ -55,7 +55,7 @@ export default function Home() {
               <Globe className="text-primary"/>
               Play Online
             </CardTitle>
-            <CardDescription>Create a room or join a game to play across the world.</CardDescription>
+            <CardDescription>Create a room or challenge a friend anywhere in the world.</CardDescription>
           </CardHeader>
           <CardContent>
             <OnlineGameForm />
