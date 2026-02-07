@@ -14,8 +14,8 @@ const SvgDefs = () => (
       <feDropShadow dx="0" dy="1" stdDeviation="0.8" floodColor="#000" floodOpacity="0.3"/>
     </filter>
     <linearGradient id="black-piece-gradient" x1="50%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stopColor="#4d4d4d" />
-        <stop offset="100%" stopColor="#2c2c2c" />
+        <stop offset="0%" stopColor="#282828" />
+        <stop offset="100%" stopColor="#000000" />
     </linearGradient>
   </defs>
 );
@@ -33,7 +33,7 @@ export const WhitePawn = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <SvgDefs />
     <g filter="url(#white-piece-shadow)">
-      <PawnPath fill="#f8f8f8" />
+      <PawnPath fill="#fff" />
     </g>
   </svg>
 );
@@ -49,7 +49,7 @@ export const WhiteRook = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <RookPath fill="#f8f8f8" />
+            <RookPath fill="#fff" />
         </g>
     </svg>
 );
@@ -65,7 +65,7 @@ export const WhiteKnight = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <KnightPath fill="#f8f8f8" />
+            <KnightPath fill="#fff" />
         </g>
     </svg>
 );
@@ -81,7 +81,7 @@ export const WhiteBishop = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <BishopPath fill="#f8f8f8" />
+            <BishopPath fill="#fff" />
         </g>
     </svg>
 );
@@ -97,7 +97,7 @@ export const WhiteQueen = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <QueenPath fill="#f8f8f8" />
+            <QueenPath fill="#fff" />
         </g>
     </svg>
 );
@@ -113,7 +113,7 @@ export const WhiteKing = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <KingPath fill="#f8f8f8" />
+            <KingPath fill="#fff" />
         </g>
     </svg>
 );
