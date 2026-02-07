@@ -53,11 +53,10 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
 
   const playSound = useCallback((sound: SoundType) => {
     if (isSoundEnabled && audio && audio[sound]) {
-      // audio[sound]?.play().catch(e => console.error("Error playing sound:", e));
       const soundToPlay = audio[sound];
       if (soundToPlay) {
         soundToPlay.currentTime = 0;
-        soundToPlay.play().catch(e => console.error("Error playing sound:", e));
+        soundToPlay.play().catch(() => {});
       }
     }
   }, [isSoundEnabled, audio]);
