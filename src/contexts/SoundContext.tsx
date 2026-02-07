@@ -54,9 +54,13 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   const playSound = useCallback((sound: SoundType) => {
     if (isSoundEnabled && audio && audio[sound]) {
       const soundToPlay = audio[sound];
-      if (soundToPlay) {
+      // readyState > 2 means the browser has at least HAVE_FUTURE_DATA.
+      // This check prevents errors if the sound file failed to load or is not ready.
+      if (soundToPlay && soundToPlay.readyState > 2) {
         soundToPlay.currentTime = 0;
-        soundToPlay.play().catch(() => {});
+        soundToPlay.play().catch(() => {
+          // Fail silently if playback is interrupted or fails for any reason.
+        });
       }
     }
   }, [isSoundEnabled, audio]);
