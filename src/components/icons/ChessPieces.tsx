@@ -4,44 +4,45 @@ const sharedProps: SVGProps<SVGSVGElement> = {
   width: "100%",
   height: "100%",
   viewBox: "0 0 45 45",
-  fill: "none",
 };
 
 export const WhitePawn = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#FFF" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22.5 36c-2.21 0-4-1.79-4-4 0-1.474.802-2.756 2-3.465V28.5h4v.035c1.198.71 2 1.99 2 3.465 0 2.21-1.79 4-4 4z" />
-      <path d="M22.5 36V9.5" />
-      <path d="M22.5 9.5c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
+      <path d="M22.5 35.5 A 3.5 3.5 0 0 1 22.5 28.5 A 3.5 3.5 0 0 1 22.5 35.5" />
+      <path d="M22.5 32 C 22.5 32 22.5 30 22.5 30 C 24.5 30 24.5 28 24.5 28 C 24.5 26 22.5 25 22.5 25 C 22.5 25 22.5 23 22.5 23 C 24.5 23 24.5 21 24.5 21 C 24.5 19 22.5 18 22.5 18 L 22.5 14.5" fill="none" />
+      <path d="M22.5 32 C 22.5 32 22.5 30 22.5 30 C 20.5 30 20.5 28 20.5 28 C 20.5 26 22.5 25 22.5 25 C 22.5 25 22.5 23 22.5 23 C 20.5 23 20.5 21 20.5 21 C 20.5 19 22.5 18 22.5 18 L 22.5 14.5" fill="none" />
+      <path d="M22.5 11.5 A 2 2 0 1 1 22.5 7.5 A 2 2 0 1 1 22.5 11.5" />
     </g>
   </svg>
 );
 export const BlackPawn = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#000" stroke="#FFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22.5 36c-2.21 0-4-1.79-4-4 0-1.474.802-2.756 2-3.465V28.5h4v.035c1.198.71 2 1.99 2 3.465 0 2.21-1.79 4-4 4z" />
-      <path d="M22.5 36V9.5" />
-      <path d="M22.5 9.5c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
+      <path d="M22.5 35.5 A 3.5 3.5 0 0 1 22.5 28.5 A 3.5 3.5 0 0 1 22.5 35.5" />
+      <path d="M22.5 32 C 22.5 32 22.5 30 22.5 30 C 24.5 30 24.5 28 24.5 28 C 24.5 26 22.5 25 22.5 25 C 22.5 25 22.5 23 22.5 23 C 24.5 23 24.5 21 24.5 21 C 24.5 19 22.5 18 22.5 18 L 22.5 14.5" fill="none" />
+      <path d="M22.5 32 C 22.5 32 22.5 30 22.5 30 C 20.5 30 20.5 28 20.5 28 C 20.5 26 22.5 25 22.5 25 C 22.5 25 22.5 23 22.5 23 C 20.5 23 20.5 21 20.5 21 C 20.5 19 22.5 18 22.5 18 L 22.5 14.5" fill="none" />
+      <path d="M22.5 11.5 A 2 2 0 1 1 22.5 7.5 A 2 2 0 1 1 22.5 11.5" />
     </g>
   </svg>
 );
 export const WhiteRook = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#FFF" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 39h27v-3H9v3zM12 36v-4h21v4H12zM11 14V9h4v2h5V9h5v2h5V9h4v5" />
-      <path d="M34 14l-3 3H14l-3-3" />
-      <path d="M31 17v12.5H14V17" />
-      <path d="M31 29.5l1.5 2.5h-20l1.5-2.5" />
+      <path d="M9 39h27v-3H9v3zM12.5 32l1.5-2.5h17l1.5 2.5h-20zM12 36v-4h21v4H12z" />
+      <path d="M14 29.5v-13h17v13H14z" fill="none" />
+      <path d="M14 16.5L11 14h23l-3 2.5H14z" />
+      <path d="M11 14V9h4v2h5V9h5v2h5V9h4v5" />
     </g>
   </svg>
 );
 export const BlackRook = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#000" stroke="#FFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 39h27v-3H9v3zM12 36v-4h21v4H12zM11 14V9h4v2h5V9h5v2h5V9h4v5" />
-      <path d="M34 14l-3 3H14l-3-3" />
-      <path d="M31 17v12.5H14V17" />
-      <path d="M31 29.5l1.5 2.5h-20l1.5-2.5" />
+      <path d="M9 39h27v-3H9v3zM12.5 32l1.5-2.5h17l1.5 2.5h-20zM12 36v-4h21v4H12z" />
+      <path d="M14 29.5v-13h17v13H14z" fill="none" />
+      <path d="M14 16.5L11 14h23l-3 2.5H14z" />
+      <path d="M11 14V9h4v2h5V9h5v2h5V9h4v5" />
     </g>
   </svg>
 );
@@ -49,8 +50,9 @@ export const WhiteKnight = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#FFF" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 10c1.5 0 3.5 1 4.5 3s.5 4.5-.5 6.5c-1 2-2.5 2.5-2.5 2.5l-2 2h-10c0-2.5 1-5 2-7 1-2 2.5-4 4-4.5 1.5-.5 3-1.5 3-1.5z" />
-      <path d="M11.5 25.5l-2 3.5c-1.5 2.5-1.5 5.5.5 7.5 2 2 4.5 2 6.5 0l1-1.5" />
-      <path d="M12.5 31.5H25" />
+      <path d="M12.5 31.5h15l-1.5-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5" fill="none" />
+      <path d="M12.5 31.5c-2 0-3.5-1.5-3.5-3.5 0-2 1.5-3.5 3.5-3.5" />
+      <path d="M27.5 31.5c2 0 3.5-1.5 3.5-3.5 0-2-1.5-3.5-3.5-3.5" />
     </g>
   </svg>
 );
@@ -58,26 +60,27 @@ export const BlackKnight = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#000" stroke="#FFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 10c1.5 0 3.5 1 4.5 3s.5 4.5-.5 6.5c-1 2-2.5 2.5-2.5 2.5l-2 2h-10c0-2.5 1-5 2-7 1-2 2.5-4 4-4.5 1.5-.5 3-1.5 3-1.5z" />
-      <path d="M11.5 25.5l-2 3.5c-1.5 2.5-1.5 5.5.5 7.5 2 2 4.5 2 6.5 0l1-1.5" />
-      <path d="M12.5 31.5H25" />
+      <path d="M12.5 31.5h15l-1.5-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5-2-2.5" fill="none" />
+      <path d="M12.5 31.5c-2 0-3.5-1.5-3.5-3.5 0-2 1.5-3.5 3.5-3.5" />
+      <path d="M27.5 31.5c2 0 3.5-1.5 3.5-3.5 0-2-1.5-3.5-3.5-3.5" />
     </g>
   </svg>
 );
 export const WhiteBishop = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#FFF" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 36h27v-2H9v2zm13.5-3s-2-2-2-6.5c0-4.5-2-4.5-2-4.5-2-1-2-2.5-2-2.5s3.5-1 6.5-1 6.5 1 6.5 1c0 0 0 1.5-2 2.5 0 0-2 0-2 4.5 0 4.5-2 6.5-2 6.5z" />
-      <path d="M22.5 25c-1.5 0-2.5-1-2.5-1s-1-1.5-1-2.5c0-1 .5-2 1-2.5" />
-      <path d="M22.5 14.5c2.5 0 4.5 2 4.5 4.5 0 2.5-2 4.5-4.5 4.5" />
+      <path d="M9 36h27v-2H9v2zm13.5-3s-2-2-2-6.5c0-4.5-2-4.5-2-4.5-2-1-2-2.5-2-2.5s3.5-1 6.5-1 6.5 1 6.5 1c0 0 0 1.5-2 2.5 0 0-2 0-2 4.5 0 4.5 2 6.5 2 6.5z" />
+      <path d="M22.5 11.5l-1.5-1.5h-2l-1.5 1.5" />
+      <path d="M22.5 11.5l1.5-1.5h2l1.5 1.5" />
     </g>
   </svg>
 );
 export const BlackBishop = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g fill="#000" stroke="#FFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 36h27v-2H9v2zm13.5-3s-2-2-2-6.5c0-4.5-2-4.5-2-4.5-2-1-2-2.5-2-2.5s3.5-1 6.5-1 6.5 1 6.5 1c0 0 0 1.5-2 2.5 0 0-2 0-2 4.5 0 4.5-2 6.5-2 6.5z" />
-      <path d="M22.5 25c-1.5 0-2.5-1-2.5-1s-1-1.5-1-2.5c0-1 .5-2 1-2.5" />
-      <path d="M22.5 14.5c2.5 0 4.5 2 4.5 4.5 0 2.5-2 4.5-4.5 4.5" />
+      <path d="M9 36h27v-2H9v2zm13.5-3s-2-2-2-6.5c0-4.5-2-4.5-2-4.5-2-1-2-2.5-2-2.5s3.5-1 6.5-1 6.5 1 6.5 1c0 0 0 1.5-2 2.5 0 0-2 0-2 4.5 0 4.5 2 6.5 2 6.5z" />
+      <path d="M22.5 11.5l-1.5-1.5h-2l-1.5 1.5" />
+      <path d="M22.5 11.5l1.5-1.5h2l1.5 1.5" />
     </g>
   </svg>
 );

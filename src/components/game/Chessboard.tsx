@@ -97,22 +97,22 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
                 key={square}
                 onClick={() => handleSquareClick(square)}
                 className={cn(
-                  'relative aspect-square w-full flex items-center justify-center cursor-pointer transition-colors',
-                  isLight ? 'bg-primary/10' : 'bg-primary/40',
+                  'relative aspect-square w-full flex items-center justify-center cursor-pointer transition-all duration-75',
+                  isLight ? 'bg-wood-light' : 'bg-wood-dark',
                   {
-                    'bg-accent/60': selectedSquare === square,
-                    'hover:bg-accent/40': isInteractable,
-                  }
+                    'ring-2 ring-inset ring-selection-gold': selectedSquare === square,
+                  },
+                  isInteractable ? 'hover:brightness-125' : ''
                 )}
               >
                 {possibleMoves.has(square) && (
-                  <div className="absolute w-1/3 h-1/3 rounded-full bg-accent/50" />
+                  <div className="absolute w-1/3 h-1/3 rounded-full bg-black/20 pointer-events-none" />
                 )}
 
-                {PieceComponent && <PieceComponent className="relative z-10 w-4/5 h-4/5" />}
+                {PieceComponent && <PieceComponent className="relative z-10 w-full h-full" />}
 
                 {(lastMove?.from === square || lastMove?.to === square) && (
-                  <div className="absolute inset-0 bg-accent/30" />
+                  <div className="absolute inset-0 bg-selection-gold/30 pointer-events-none" />
                 )}
               </div>
             );
