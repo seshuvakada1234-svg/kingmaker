@@ -1,21 +1,29 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Chess, type Move } from 'chess.js';
 import { Chessboard } from '@/components/game/Chessboard';
 import { GameStatus } from '@/components/game/GameStatus';
 import { MoveHistory } from '@/components/game/MoveHistory';
 import { GameControls } from '@/components/game/GameControls';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/contexts/SoundContext';
 
 export default function LocalPlayPage() {
   const [game, setGame] = useState(new Chess());
   const { toast } = useToast();
+  const { playSound } = useSound();
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     try {
-      const result = game.move(move);
+      const tempGame = new Chess(game.fen());
+      const result = tempGame.move(move);
       if (result) {
-        setGame(new Chess(game.fen())); // Force re-render by creating a new instance
+        setGame(tempGame);
+        if (result.flags.includes('c')) {
+          playSound('capture');
+        } else {
+          playSound('move');
+        }
         return true;
       }
     } catch (error) {
@@ -27,11 +35,21 @@ export default function LocalPlayPage() {
       return false;
     }
     return false;
-  }, [game, toast]);
+  }, [game, toast, playSound]);
 
   const resetGame = () => {
     setGame(new Chess());
   }
+
+  useEffect(() => {
+    if (game.isGameOver()) {
+      if (game.isCheckmate()) {
+        playSound('win');
+      } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
+        playSound('draw');
+      }
+    }
+  }, [game, playSound]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">

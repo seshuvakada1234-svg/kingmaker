@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Chess, type Move } from 'chess.js';
 import { database } from '@/lib/firebase';
@@ -12,6 +12,7 @@ import { GameControls } from '@/components/game/GameControls';
 import { AdBanner } from '@/components/game/AdBanner';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSound } from '@/contexts/SoundContext';
 
 export default function OnlinePlayPage() {
   const params = useParams();
@@ -21,6 +22,8 @@ export default function OnlinePlayPage() {
   const [playerSessionId] = useState(() => Math.random().toString(36).substring(2));
   const [gameExists, setGameExists] = useState<boolean | null>(null);
   const { toast } = useToast();
+  const { playSound } = useSound();
+  const prevFenRef = useRef<string>(game.fen());
 
   useEffect(() => {
     if (!roomId) return;
@@ -71,6 +74,29 @@ export default function OnlinePlayPage() {
       off(gameRef, 'value', handleValueChange);
     };
   }, [roomId, playerColor, playerSessionId, gameExists]);
+  
+  useEffect(() => {
+    const currentFen = game.fen();
+    // Play sound if a move was made
+    if (prevFenRef.current && prevFenRef.current !== currentFen && game.history().length > 0) {
+        const lastMove = game.history({ verbose: true }).slice(-1)[0];
+        if (lastMove.flags.includes('c')) {
+            playSound('capture');
+        } else {
+            playSound('move');
+        }
+    }
+    prevFenRef.current = currentFen;
+    
+    // Play sound on game over
+    if (game.isGameOver()) {
+        if (game.isCheckmate()) {
+            playSound('win');
+        } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
+            playSound('draw');
+        }
+    }
+  }, [game, playSound]);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (game.turn() !== playerColor) {
@@ -82,6 +108,7 @@ export default function OnlinePlayPage() {
       const tempGame = new Chess(game.fen());
       const result = tempGame.move(move);
       if (result) {
+        // We don't play sound here directly. The onValue listener will trigger the useEffect.
         set(ref(database, `games/${roomId}/fen`), tempGame.fen());
         return true;
       }

@@ -1,7 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -9,6 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useSound } from '@/contexts/SoundContext';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface GameControlsProps {
   onReset: () => void;
@@ -27,6 +30,8 @@ export function GameControls({
   isOnlineMode,
   roomCode,
 }: GameControlsProps) {
+  const { isSoundEnabled, toggleSound } = useSound();
+
   const handleCopyRoomCode = () => {
     if (roomCode) {
       navigator.clipboard.writeText(roomCode);
@@ -45,7 +50,7 @@ export function GameControls({
         </Button>
         {isAiMode && onDifficultyChange && (
           <div>
-            <label className="text-sm font-medium text-muted-foreground">AI Difficulty</label>
+            <Label className="text-sm font-medium text-muted-foreground">AI Difficulty</Label>
             <Select onValueChange={onDifficultyChange} value={aiDifficulty}>
               <SelectTrigger>
                 <SelectValue placeholder="Select difficulty" />
@@ -65,6 +70,17 @@ export function GameControls({
             </Button>
           </div>
         )}
+        <div className="flex items-center justify-between pt-2">
+          <Label htmlFor="sound-toggle" className="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground">
+            {isSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+            <span>Sound</span>
+          </Label>
+          <Switch
+            id="sound-toggle"
+            checked={isSoundEnabled}
+            onCheckedChange={toggleSound}
+          />
+        </div>
       </CardContent>
     </Card>
   );

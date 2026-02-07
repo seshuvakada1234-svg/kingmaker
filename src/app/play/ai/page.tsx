@@ -6,6 +6,7 @@ import { GameStatus } from '@/components/game/GameStatus';
 import { MoveHistory } from '@/components/game/MoveHistory';
 import { GameControls } from '@/components/game/GameControls';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/contexts/SoundContext';
 
 /**
  * Determines the AI's next move based on the current game state and difficulty.
@@ -42,13 +43,20 @@ export default function AiPlayPage() {
   const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('easy');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const { toast } = useToast();
+  const { playSound } = useSound();
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (game.turn() !== playerColor) return false;
     try {
-      const result = game.move(move);
+      const tempGame = new Chess(game.fen());
+      const result = tempGame.move(move);
       if (result) {
-        setGame(new Chess(game.fen()));
+        setGame(tempGame);
+        if (result.flags.includes('c')) {
+          playSound('capture');
+        } else {
+          playSound('move');
+        }
         return true;
       }
     } catch (error) {
@@ -56,7 +64,7 @@ export default function AiPlayPage() {
       return false;
     }
     return false;
-  }, [game, playerColor, toast]);
+  }, [game, playerColor, toast, playSound]);
 
   const resetGame = useCallback(() => {
     setGame(new Chess());
@@ -68,26 +76,41 @@ export default function AiPlayPage() {
   }
 
   useEffect(() => {
+    if (game.isGameOver()) {
+      if (game.isCheckmate()) {
+        playSound('win');
+      } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
+        playSound('draw');
+      }
+      return;
+    }
+
     // AI move logic
-    if (game.isGameOver() || game.turn() === playerColor) {
+    if (game.turn() === playerColor) {
       return;
     }
 
     setIsAiThinking(true);
     // Realistic "thinking" delay for the AI
     const timer = setTimeout(() => {
-      const aiMove = getAiMove(game, difficulty);
+      const gameCopy = new Chess(game.fen());
+      const aiMove = getAiMove(gameCopy, difficulty);
       
       if (aiMove) {
-        game.move(aiMove);
-        setGame(new Chess(game.fen()));
+        const result = gameCopy.move(aiMove);
+        setGame(gameCopy);
+        if (result && result.flags.includes('c')) {
+          playSound('capture');
+        } else {
+          playSound('move');
+        }
       }
       
       setIsAiThinking(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, difficulty]);
+  }, [game, playerColor, difficulty, playSound]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
