@@ -11,7 +11,7 @@ const sharedProps: SVGProps<SVGSVGElement> = {
 const SvgDefs = () => (
   <defs>
     <filter id="white-piece-shadow" x="-0.2" y="-0.2" width="1.4" height="1.4">
-      <feDropShadow dx="0" dy="1" stdDeviation="0.8" floodColor="#000" floodOpacity="0.3"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="0.8" floodColor="#000000" floodOpacity="0.3"/>
     </filter>
   </defs>
 );
@@ -29,14 +29,14 @@ export const WhitePawn = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <SvgDefs />
     <g filter="url(#white-piece-shadow)">
-      <PawnPath fill="#fff" />
+      <PawnPath fill="#FFFFFF" />
     </g>
   </svg>
 );
 export const BlackPawn = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
     <g>
-      <PawnPath fill="#000" />
+      <PawnPath fill="#000000" />
     </g>
   </svg>
 );
@@ -44,14 +44,14 @@ export const WhiteRook = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <RookPath fill="#fff" />
+            <RookPath fill="#FFFFFF" />
         </g>
     </svg>
 );
 export const BlackRook = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <g>
-            <RookPath fill="#000" />
+            <RookPath fill="#000000" />
         </g>
     </svg>
 );
@@ -59,14 +59,14 @@ export const WhiteKnight = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <KnightPath fill="#fff" />
+            <KnightPath fill="#FFFFFF" />
         </g>
     </svg>
 );
 export const BlackKnight = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <g>
-            <KnightPath fill="#000" />
+            <KnightPath fill="#000000" />
         </g>
     </svg>
 );
@@ -74,14 +74,14 @@ export const WhiteBishop = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <BishopPath fill="#fff" />
+            <BishopPath fill="#FFFFFF" />
         </g>
     </svg>
 );
 export const BlackBishop = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <g>
-            <BishopPath fill="#000" />
+            <BishopPath fill="#000000" />
         </g>
     </svg>
 );
@@ -89,14 +89,14 @@ export const WhiteQueen = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <QueenPath fill="#fff" />
+            <QueenPath fill="#FFFFFF" />
         </g>
     </svg>
 );
 export const BlackQueen = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <g>
-            <QueenPath fill="#000" />
+            <QueenPath fill="#000000" />
         </g>
     </svg>
 );
@@ -104,14 +104,14 @@ export const WhiteKing = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <SvgDefs />
         <g filter="url(#white-piece-shadow)">
-            <KingPath fill="#fff" />
+            <KingPath fill="#FFFFFF" />
         </g>
     </svg>
 );
 export const BlackKing = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
         <g>
-            <KingPath fill="#000" />
+            <KingPath fill="#000000" />
         </g>
     </svg>
 );
