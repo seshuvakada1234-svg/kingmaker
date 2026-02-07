@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'ChessConnect',
+  title: 'kingmaker – chess',
   description: 'Your modern hub for local, AI, and online chess.',
 };
 

@@ -11,7 +11,7 @@ export default function Home() {
         <div className="flex justify-center items-center gap-4 mb-4">
           <Crown className="w-16 h-16 text-primary" />
           <h1 className="text-6xl font-headline font-bold text-primary">
-            ChessConnect
+            kingmaker
           </h1>
         </div>
         <p className="text-lg text-muted-foreground">
