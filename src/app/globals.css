@@ -37,8 +37,8 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
-    --wood-light: 39 53% 83%;
-    --wood-dark: 30 31% 54%;
+    --wood-light: 39 64% 88%;
+    --wood-dark: 30 42% 63%;
     --selection-gold: 45 86% 62%;
   }
   .dark {
@@ -69,8 +69,8 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
-    --wood-light: 39 53% 83%;
-    --wood-dark: 30 31% 54%;
+    --wood-light: 39 64% 88%;
+    --wood-dark: 30 42% 63%;
     --selection-gold: 45 86% 62%;
   }
 }
