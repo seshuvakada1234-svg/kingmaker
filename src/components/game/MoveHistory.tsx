@@ -2,7 +2,7 @@
 import type { Chess } from 'chess.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 
 interface MoveHistoryProps {
   game: Chess;
@@ -39,11 +39,11 @@ export function MoveHistory({ game }: MoveHistoryProps) {
         <ScrollArea className="h-48 w-full pr-4" ref={scrollAreaRef}>
           <div className="grid grid-cols-[auto_1fr_1fr] gap-x-4 gap-y-1 font-mono text-sm">
             {movePairs.map(pair => (
-              <>
-                <div key={`${pair.num}-num`} className="text-muted-foreground">{pair.num}.</div>
-                <div key={`${pair.num}-w`}>{pair.white}</div>
-                <div key={`${pair.num}-b`}>{pair.black}</div>
-              </>
+              <React.Fragment key={pair.num}>
+                <div className="text-muted-foreground">{pair.num}.</div>
+                <div>{pair.white}</div>
+                <div>{pair.black}</div>
+              </React.Fragment>
             ))}
           </div>
           {history.length === 0 && <p className="text-muted-foreground text-sm">No moves yet.</p>}
