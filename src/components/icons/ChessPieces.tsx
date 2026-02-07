@@ -13,20 +13,16 @@ const SvgDefs = () => (
     <filter id="white-piece-shadow" x="-0.2" y="-0.2" width="1.4" height="1.4">
       <feDropShadow dx="0" dy="1" stdDeviation="0.8" floodColor="#000" floodOpacity="0.3"/>
     </filter>
-    <linearGradient id="black-piece-gradient" x1="50%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stopColor="#282828" />
-        <stop offset="100%" stopColor="#000000" />
-    </linearGradient>
   </defs>
 );
 
-// --- PIECE PATHS (Cburnett style) ---
-const KingPath = () => <path d="M22.5,11.63L22.5,6h-1.5v3h-3v1.5h3v3h1.5v-3h3V9h-3V6z M32,25.5c0,3.31-2.69,6-6,6H19c-3.31,0-6-2.69-6-6V19 c0-3.31,2.69-6,6-6h7c3.31,0,6,2.69,6,6V25.5z M32,31.5v3H13v-3H32z" />;
-const QueenPath = () => <path d="M13,13.5l-2,18h23l-2-18H13z M13.5,12c0,3-1,4-1,4l1,2h19l1-2c0,0-1-1-1-4H13.5z M14,7.5c-1.66,0-3,1.34-3,3s1.34,3,3,3s3-1.34,3-3S15.66,7.5,14,7.5z M22.5,7.5c-1.66,0-3,1.34-3,3s1.34,3,3,3s3-1.34,3-3S24.16,7.5,22.5,7.5z M31,7.5c-1.66,0-3,1.34-3,3s1.34,3,3,3s3-1.34,3-3S32.66,7.5,31,7.5z" />;
-const RookPath = () => <path d="M14,13.5V11h5v2.5h-5z M20.5,13.5V11h4v2.5h-4z M26,13.5V11h5v2.5h-5z M13,31.5h19v3H13V31.5z M14,15v15h17V15H14z" />;
-const BishopPath = () => <path d="M18,13.5c3.31,0,6,2.69,6,6c0,2.21-1.79,4-4,4c-3.31,0-6-2.69-6-6S14.69,13.5,18,13.5z M22.5,10.5c-1.66,0-3-1.34-3-3s1.34-3,3-3s3,1.34,3,3S24.16,10.5,22.5,10.5z M20,29.5c-3-3-6-6-6-9c0-3.31,2.69-6,6-6h5c3.31,0,6,2.69,6,6c0,3-3,6-6,9H20z M14,31.5h17v3H14V31.5z" />;
-const KnightPath = () => <path d="M19,10.5c0,1.4,0.4,2.6,1.2,3.5c-1.2,0.8-2.6,1.3-4.2,1.5c0,0-1.2,0.1-1,2c0.2,2.3,1.4,3.5,2,3.5c0.6,0,2.5-1.2,2.5-3c0-1.8-1.5-3-1.5-3s0.8-0.2,1.2-0.2c1.7,0,3.2,0.6,4.3,1.7c-0.3,1-0.5,2-0.5,3c0,2.8,1.2,5,3.5,5s3.5-2.2,3.5-5c0-2.8-1.5-5-4-5c-1.5,0-2.8,0.6-3.8,1.5c-1-1.2-1.2-2.7-1.2-4c0-2.2,1.8-4,4-4s4,1.8,4,4c0,0.8-0.2,1.5-0.6,2.1c0.7,0.4,1.6,0.6,2.6,0.6c2.8,0,5-2.2,5-5c0-2.8-2.2-5-5-5c-2.5,0-4.5,1.8-4.9,4.1C23.9,13.1,21.8,10.5,19,10.5z M13,31.5h19v3H13V31.5z" />;
-const PawnPath = () => <path d="M22.5,13.5c-2.21,0-4,1.79-4,4s1.79,4,4,4s4-1.79,4-4S24.71,13.5,22.5,13.5z M22.5,23.5c-4,0-6,2-6,4v3h12v-3C28.5,25.5,26.5,23.5,22.5,23.5z M13,31.5h19v3H13V31.5z" />;
+// --- PIECE PATHS (Bold, Solid, Flat Staunton Style) ---
+const KingPath = () => <path d="M22.5 6 L20.5 6 L20.5 8 L18.5 8 L18.5 10 L20.5 10 L20.5 12 L24.5 12 L24.5 10 L26.5 10 L26.5 8 L24.5 8 L24.5 6 Z M22.5,14 C17,14 14,18 14,22 L14,28 C14,29 15,30 16,30 L29,30 C30,30 31,29 31,28 L31,22 C31,18 28,14 22.5,14 Z M13.5,32 L31.5,32 L31.5,39 L13.5,39 Z" />;
+const QueenPath = () => <path d="M12.5 8 A 2 2 0 0 1 14.5 10 A 2 2 0 0 1 12.5 12 A 2 2 0 0 1 10.5 10 A 2 2 0 0 1 12.5 8 Z M22.5 8 A 2 2 0 0 1 24.5 10 A 2 2 0 0 1 22.5 12 A 2 2 0 0 1 20.5 10 A 2 2 0 0 1 22.5 8 Z M32.5 8 A 2 2 0 0 1 34.5 10 A 2 2 0 0 1 32.5 12 A 2 2 0 0 1 30.5 10 A 2 2 0 0 1 32.5 8 Z M11.5,14 L33.5,14 C30.5,20 14.5,20 11.5,14 Z M14,22 C14,27 17.5,30 22.5,30 C27.5,30 31,27 31,22 L14,22 Z M13.5,32 L31.5,32 L31.5,39 L13.5,39 Z" />;
+const RookPath = () => <path d="M14 9 L14 15 L19 15 L19 12 L26 12 L26 15 L31 15 L31 9 Z M13,17 L32,17 L32,30 L13,30 L13,17 Z M13,32 L32,32 L32,39 L13,39 Z" />;
+const BishopPath = () => <path d="M22.5 8 A 2.5 2.5 0 0 1 25 10.5 A 2.5 2.5 0 0 1 22.5 13 A 2.5 2.5 0 0 1 20 10.5 A 2.5 2.5 0 0 1 22.5 8 Z M18,15 L27,15 C29,20 29,25 22.5,29 C16,25 16,20 18,15 Z M13,31 L32,31 L32,38 L13,38 Z" />;
+const KnightPath = () => <path d="M16 10 C18 6 23 6 25 10 C27 14 24 18 20 18 C18 22 20 28 26 29 L28 29 C31 29 32 27 32 25 C32 20 28 18 28 18 C31 16 32 12 29 10 C27 8 23 8 21 11 C20 9 18 8 16 10 Z M13,31 L32,31 L32,38 L13,38 Z" />;
+const PawnPath = () => <path d="M22.5,11.5 A 3.5 3.5 0 0 1 26 15 A 3.5 3.5 0 0 1 22.5 18.5 A 3.5 3.5 0 0 1 19 15 A 3.5 3.5 0 0 1 22.5 11.5 Z M18,20 L27,20 L27,28 L18,28 Z M14,30 L31,30 L31,37 L14,37 Z" />;
 
 // --- COMPONENTS ---
 export const WhitePawn = (props: SVGProps<SVGSVGElement>) => (
@@ -39,9 +35,8 @@ export const WhitePawn = (props: SVGProps<SVGSVGElement>) => (
 );
 export const BlackPawn = (props: SVGProps<SVGSVGElement>) => (
   <svg {...sharedProps} {...props}>
-    <SvgDefs />
     <g>
-      <PawnPath fill="url(#black-piece-gradient)" />
+      <PawnPath fill="#000" />
     </g>
   </svg>
 );
@@ -55,9 +50,8 @@ export const WhiteRook = (props: SVGProps<SVGSVGElement>) => (
 );
 export const BlackRook = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
-        <SvgDefs />
         <g>
-            <RookPath fill="url(#black-piece-gradient)" />
+            <RookPath fill="#000" />
         </g>
     </svg>
 );
@@ -71,9 +65,8 @@ export const WhiteKnight = (props: SVGProps<SVGSVGElement>) => (
 );
 export const BlackKnight = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
-        <SvgDefs />
         <g>
-            <KnightPath fill="url(#black-piece-gradient)" />
+            <KnightPath fill="#000" />
         </g>
     </svg>
 );
@@ -87,9 +80,8 @@ export const WhiteBishop = (props: SVGProps<SVGSVGElement>) => (
 );
 export const BlackBishop = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
-        <SvgDefs />
         <g>
-            <BishopPath fill="url(#black-piece-gradient)" />
+            <BishopPath fill="#000" />
         </g>
     </svg>
 );
@@ -103,9 +95,8 @@ export const WhiteQueen = (props: SVGProps<SVGSVGElement>) => (
 );
 export const BlackQueen = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
-        <SvgDefs />
         <g>
-            <QueenPath fill="url(#black-piece-gradient)" />
+            <QueenPath fill="#000" />
         </g>
     </svg>
 );
@@ -119,9 +110,8 @@ export const WhiteKing = (props: SVGProps<SVGSVGElement>) => (
 );
 export const BlackKing = (props: SVGProps<SVGSVGElement>) => (
     <svg {...sharedProps} {...props}>
-        <SvgDefs />
         <g>
-            <KingPath fill="url(#black-piece-gradient)" />
+            <KingPath fill="#000" />
         </g>
     </svg>
 );
