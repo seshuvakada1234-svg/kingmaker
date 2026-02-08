@@ -41,7 +41,8 @@ export default function OnlinePlayPage() {
       setGame(updatedGame);
     }
     if (newGameData && newGameData.status) {
-      setStatus(newGameData.status);
+      // Only update status if it's different, to avoid re-renders
+      setStatus(prevStatus => prevStatus !== newGameData.status ? newGameData.status : prevStatus);
     }
   }, [game]);
 
@@ -66,8 +67,20 @@ export default function OnlinePlayPage() {
       try {
         await runTransaction(db, async (transaction) => {
           const gameDoc = await transaction.get(gameRef);
+
           if (isCreating) {
-            if (!gameDoc.exists()) {
+            if (gameDoc.exists()) {
+              // A player is trying to create a room that already exists.
+              // This can happen if they refresh the page. We let them rejoin if they were white.
+              const gameData = gameDoc.data();
+              if (gameData.players.white === playerSessionId) {
+                setPlayerColor('w');
+              } else {
+                 // The room is taken by another white player.
+                throw new Error('This room code is already in use.');
+              }
+            } else {
+              // Room doesn't exist, create it as the white player.
               const newGame = new Chess();
               const gameData = {
                 fen: newGame.fen(),
@@ -77,41 +90,34 @@ export default function OnlinePlayPage() {
               };
               transaction.set(gameRef, gameData);
               setPlayerColor('w');
-            } else {
-              const gameData = gameDoc.data();
-              if (gameData.players.white === playerSessionId) {
-                 setPlayerColor('w');
-              } else if (!gameData.players.black) {
-                transaction.update(gameRef, { 
-                  'players.black': playerSessionId,
-                  status: 'playing',
-                });
-                setPlayerColor('b');
-              } else {
-                 throw new Error('This room is full.');
-              }
             }
-          } else { // Joining
+          } else {
+            // This player is joining an existing room.
             if (!gameDoc.exists()) {
               throw new Error('Room not found. Please check the code and try again.');
             }
+            
             const gameData = gameDoc.data();
             const { players } = gameData;
+
             if (players.white === playerSessionId) {
-              setPlayerColor('w');
+              setPlayerColor('w'); // Rejoining as white
             } else if (players.black === playerSessionId) {
-              setPlayerColor('b');
+              setPlayerColor('b'); // Rejoining as black
             } else if (!players.black) {
-              transaction.update(gameRef, {
+              // The black spot is open, so join as the black player.
+              transaction.update(gameRef, { 
                 'players.black': playerSessionId,
                 status: 'playing',
               });
               setPlayerColor('b');
             } else {
+              // Both spots are taken by other players.
               throw new Error('This room is full.');
             }
           }
         });
+
       } catch (e: any) {
         setStatus('error');
         setErrorMessage(e.message || 'Failed to create or join the room.');
@@ -168,42 +174,35 @@ export default function OnlinePlayPage() {
       toast({ title: "Cannot make move", description: "It's not your turn or the game isn't active.", variant: "destructive" });
       return false;
     }
-
-    const localGameCopy = new Chess(game.fen());
-    const moveResult = localGameCopy.move(move);
-
+  
+    const gameCopy = new Chess(game.fen());
+    const moveResult = gameCopy.move(move);
+  
     if (!moveResult) {
+      // This case should be rare since the board UI validates moves, but it's a good safeguard.
+      toast({ title: "Invalid Move", variant: "destructive" });
       return false; 
     }
     
+    // Optimistic UI update
     const fenBeforeMove = game.fen();
-    setGame(localGameCopy);
-
+    setGame(gameCopy);
+  
+    // Sync with Firestore
     const gameRef = doc(db, 'games', roomId);
-    runTransaction(db, async (transaction) => {
-      const gameDoc = await transaction.get(gameRef);
-      if (!gameDoc.exists()) {
-        throw new Error("Game room not found. It may have been deleted.");
-      }
-
-      const serverGame = new Chess(gameDoc.data().fen);
-      if (serverGame.turn() !== playerColor) {
-        throw new Error("It's no longer your turn. Opponent moved first.");
-      }
-      
-      const serverMoveResult = serverGame.move(move);
-      if (serverMoveResult) {
-        transaction.update(gameRef, { fen: serverGame.fen() });
-      } else {
-        throw new Error("The move was considered invalid by the server.");
-      }
-    }).catch((e: any) => {
-      toast({ title: "Move Error", description: e.message || "Your move could not be saved to the server.", variant: "destructive" });
+    setDoc(gameRef, { fen: gameCopy.fen() }, { merge: true }).catch((e) => {
+      console.error("Failed to sync move:", e);
+      toast({
+        title: "Sync Error",
+        description: "Your move could not be saved to the server. The game may be out of sync.",
+        variant: "destructive"
+      });
+      // Revert the optimistic update on failure
       setGame(new Chess(fenBeforeMove));
     });
-
+  
     return true;
-  }, [game, playerColor, roomId, toast, status]);
+  }, [game, playerColor, roomId, status, toast]);
 
   const resetGame = async () => {
     if (playerColor !== 'w') {
@@ -212,6 +211,7 @@ export default function OnlinePlayPage() {
     }
     const newGame = new Chess();
     const gameRef = doc(db, 'games', roomId);
+    // Reset the game, keeping the original white player and setting black to null.
     await setDoc(gameRef, {
       fen: newGame.fen(),
       players: { white: playerSessionId, black: null },
@@ -261,7 +261,7 @@ export default function OnlinePlayPage() {
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       <div className="w-full lg:w-64 order-2 lg:order-1">
-        <GameStatus game={game} isThinking={game.turn() !== playerColor} />
+        <GameStatus game={game} isThinking={status === 'playing' && game.turn() !== playerColor} />
         <MoveHistory game={game} />
         <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>
       </div>
