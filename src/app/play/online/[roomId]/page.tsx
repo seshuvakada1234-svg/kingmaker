@@ -36,10 +36,13 @@ export default function OnlinePlayPage() {
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   const handleGameUpdate = useCallback((newGameData: any) => {
-    if (newGameData.fen && game.fen() !== newGameData.fen) {
-      setGame(new Chess(newGameData.fen));
+    if (newGameData && newGameData.fen && game.fen() !== newGameData.fen) {
+      const updatedGame = new Chess(newGameData.fen);
+      setGame(updatedGame);
     }
-    setStatus(newGameData.status);
+    if (newGameData && newGameData.status) {
+      setStatus(newGameData.status);
+    }
   }, [game]);
 
   useEffect(() => {
@@ -61,9 +64,9 @@ export default function OnlinePlayPage() {
 
     const initAndListen = async () => {
       try {
-        if (isCreating) {
-          await runTransaction(db, async (transaction) => {
-            const gameDoc = await transaction.get(gameRef);
+        await runTransaction(db, async (transaction) => {
+          const gameDoc = await transaction.get(gameRef);
+          if (isCreating) {
             if (!gameDoc.exists()) {
               const newGame = new Chess();
               const gameData = {
@@ -75,7 +78,6 @@ export default function OnlinePlayPage() {
               transaction.set(gameRef, gameData);
               setPlayerColor('w');
             } else {
-              // Game already exists, try to join as black if possible
               const gameData = gameDoc.data();
               if (gameData.players.white === playerSessionId) {
                  setPlayerColor('w');
@@ -89,10 +91,7 @@ export default function OnlinePlayPage() {
                  throw new Error('This room is full.');
               }
             }
-          });
-        } else {
-          await runTransaction(db, async (transaction) => {
-            const gameDoc = await transaction.get(gameRef);
+          } else { // Joining
             if (!gameDoc.exists()) {
               throw new Error('Room not found. Please check the code and try again.');
             }
@@ -111,8 +110,8 @@ export default function OnlinePlayPage() {
             } else {
               throw new Error('This room is full.');
             }
-          });
-        }
+          }
+        });
       } catch (e: any) {
         setStatus('error');
         setErrorMessage(e.message || 'Failed to create or join the room.');
@@ -120,6 +119,7 @@ export default function OnlinePlayPage() {
         return;
       }
 
+      if (unsubscribeRef.current) unsubscribeRef.current();
       unsubscribeRef.current = onSnapshot(gameRef, (doc) => {
         clearTimeout(connectionTimeout);
         if (doc.exists()) {
@@ -130,6 +130,7 @@ export default function OnlinePlayPage() {
         }
       }, (error) => {
         clearTimeout(connectionTimeout);
+        console.error("Firestore snapshot error:", error);
         setStatus('error');
         setErrorMessage('Lost connection to game room.');
       });
@@ -143,7 +144,9 @@ export default function OnlinePlayPage() {
         unsubscribeRef.current();
       }
     };
-  }, [roomId, playerSessionId, searchParams, handleGameUpdate, status]);
+  // The dependency array is intentionally sparse to only run this effect once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, playerSessionId]);
 
   useEffect(() => {
     const currentFen = game.fen();
@@ -153,36 +156,53 @@ export default function OnlinePlayPage() {
       else playSound('move');
     }
     prevFenRef.current = currentFen;
+
     if (game.isGameOver()) {
       if (game.isCheckmate()) playSound('win');
       else playSound('draw');
     }
   }, [game, playSound]);
 
-  const handleMove = useCallback(async (move: { from: string; to: string; promotion?: string }): Promise<boolean> => {
-    if (game.turn() !== playerColor || status !== 'playing') {
-      toast({ title: "Not your turn or game not active!", variant: "destructive" });
+  const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
+    if (!playerColor || game.turn() !== playerColor || status !== 'playing') {
+      toast({ title: "Cannot make move", description: "It's not your turn or the game isn't active.", variant: "destructive" });
       return false;
+    }
+
+    const localGameCopy = new Chess(game.fen());
+    const moveResult = localGameCopy.move(move);
+
+    if (!moveResult) {
+      return false; 
     }
     
+    const fenBeforeMove = game.fen();
+    setGame(localGameCopy);
+
     const gameRef = doc(db, 'games', roomId);
-    try {
-      await runTransaction(db, async (transaction) => {
-        const gameDoc = await transaction.get(gameRef);
-        if (!gameDoc.exists()) throw new Error("Game not found!");
-        const currentGame = new Chess(gameDoc.data().fen);
-        const result = currentGame.move(move);
-        if (result) {
-          transaction.update(gameRef, { fen: currentGame.fen() });
-        } else {
-          throw new Error("Invalid move.");
-        }
-      });
-      return true;
-    } catch(e: any) {
-      toast({ title: "Move Error", description: e.message || "An unknown error occurred.", variant: "destructive" });
-      return false;
-    }
+    runTransaction(db, async (transaction) => {
+      const gameDoc = await transaction.get(gameRef);
+      if (!gameDoc.exists()) {
+        throw new Error("Game room not found. It may have been deleted.");
+      }
+
+      const serverGame = new Chess(gameDoc.data().fen);
+      if (serverGame.turn() !== playerColor) {
+        throw new Error("It's no longer your turn. Opponent moved first.");
+      }
+      
+      const serverMoveResult = serverGame.move(move);
+      if (serverMoveResult) {
+        transaction.update(gameRef, { fen: serverGame.fen() });
+      } else {
+        throw new Error("The move was considered invalid by the server.");
+      }
+    }).catch((e: any) => {
+      toast({ title: "Move Error", description: e.message || "Your move could not be saved to the server.", variant: "destructive" });
+      setGame(new Chess(fenBeforeMove));
+    });
+
+    return true;
   }, [game, playerColor, roomId, toast, status]);
 
   const resetGame = async () => {
@@ -196,7 +216,6 @@ export default function OnlinePlayPage() {
       fen: newGame.fen(),
       players: { white: playerSessionId, black: null },
       status: 'waiting',
-      createdAt: serverTimestamp(),
     }, { merge: true });
   };
 
@@ -216,13 +235,24 @@ export default function OnlinePlayPage() {
   }
 
   if (status === 'waiting') {
+    const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/play/online/${roomId}` : '';
+    const handleCopy = () => {
+      navigator.clipboard.writeText(inviteUrl);
+      toast({ title: "Copied!", description: "Invite link copied to clipboard." });
+    }
     return (
       <Card className="w-full max-w-md text-center">
         <CardHeader><CardTitle>Waiting for Opponent</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p>Share this room code with a friend:</p>
-          <div className="p-2 border rounded-md bg-muted font-mono text-lg">{roomId}</div>
-          <p className="text-sm text-muted-foreground">The game will begin automatically when they join.</p>
+          <div 
+            className="p-2 border rounded-md bg-muted font-mono text-lg cursor-pointer hover:bg-muted/80 transition-colors" 
+            onClick={handleCopy}
+            title="Click to copy invite link"
+          >
+            {roomId}
+          </div>
+          <p className="text-sm text-muted-foreground">Or share the full invite link. The game will begin automatically when they join.</p>
         </CardContent>
       </Card>
     );
@@ -231,14 +261,14 @@ export default function OnlinePlayPage() {
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       <div className="w-full lg:w-64 order-2 lg:order-1">
-        <GameStatus game={game} />
+        <GameStatus game={game} isThinking={game.turn() !== playerColor} />
         <MoveHistory game={game} />
         <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center">
         <Chessboard
           game={game}
-          onMove={handleMove as (move: any) => boolean}
+          onMove={handleMove}
           boardOrientation={orientation}
           isInteractable={!game.isGameOver() && game.turn() === playerColor && !!playerColor && status === 'playing'}
         />
