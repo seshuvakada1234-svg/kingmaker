@@ -1,6 +1,6 @@
 'use client';
 import { useState, useCallback, useEffect } from 'react';
-import { Chess, type Move } from 'chess.js';
+import { Chess, type Move, type Piece } from 'chess.js';
 import { Chessboard } from '@/components/game/Chessboard';
 import { GameStatus } from '@/components/game/GameStatus';
 import { MoveHistory } from '@/components/game/MoveHistory';
@@ -9,38 +9,134 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/contexts/SoundContext';
 
 /**
- * Determines the AI's next move based on the current game state and difficulty.
- * This function is robust and will not fail, ensuring the AI always makes a valid move
- * if one is available.
+ * Determines the AI's next move based on the current game state and difficulty level.
  * @param game The current chess.js game instance.
- * @param difficulty The AI difficulty, 'easy' or 'hard'.
+ * @param level The AI difficulty level, from 1 to 10.
  * @returns A valid move object from chess.js, or null if no moves are available.
  */
-const getAiMove = (game: Chess, difficulty: 'easy' | 'hard'): Move | null => {
+const getAiMove = (game: Chess, level: number): Move | null => {
   const moves = game.moves({ verbose: true });
   if (moves.length === 0) {
     return null; // Game is over, no more moves.
   }
 
-  // Hard difficulty: prioritize captures.
-  if (difficulty === 'hard') {
+  // Level 1-2: Purely random moves.
+  if (level <= 2) {
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+
+  // Level 3-4: Prefer captures, otherwise random.
+  if (level <= 4) {
     const captureMoves = moves.filter((m) => m.flags.includes('c'));
     if (captureMoves.length > 0) {
-      // Pick a random capture move.
       return captureMoves[Math.floor(Math.random() * captureMoves.length)];
     }
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+
+  // Level 5-6: Prefer captures and checks, otherwise random.
+  if (level <= 6) {
+    const captureMoves = moves.filter((m) => m.flags.includes('c'));
+    // A move is a checking move if the SAN string includes a '+' or '#'
+    const checkMoves = moves.filter((m) => m.san.includes('+') || m.san.includes('#'));
+    const goodMoves = [...new Set([...captureMoves, ...checkMoves])];
+    if (goodMoves.length > 0) {
+      return goodMoves[Math.floor(Math.random() * goodMoves.length)];
+    }
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+
+  // For levels 7+, we need an evaluation function.
+  const pieceValues: { [key in Piece['type']]: number } = { p: 1, n: 3, b: 3.2, r: 5, q: 9, k: 0 };
+  
+  const evaluateBoard = (board: (Piece | null)[][]) => {
+    let score = 0;
+    for (const row of board) {
+      for (const piece of row) {
+        if (piece) {
+          const value = pieceValues[piece.type];
+          if (piece.color === 'w') {
+            score += value;
+          } else {
+            score -= value;
+          }
+        }
+      }
+    }
+    return score;
+  };
+  
+  const isWhiteTurn = game.turn() === 'w';
+
+  // For levels 7-8, find the best move with depth 1 search.
+  if (level <= 8) {
+    let bestMove: Move | null = null;
+    let bestValue = isWhiteTurn ? -Infinity : Infinity;
+
+    for (const move of moves) {
+      const gameCopy = new Chess(game.fen());
+      gameCopy.move(move);
+      
+      // If this move is checkmate, it's the best one.
+      if (gameCopy.isCheckmate()) {
+          return move;
+      }
+      
+      const boardValue = evaluateBoard(gameCopy.board());
+
+      if (isWhiteTurn) {
+        if (boardValue > bestValue) {
+          bestValue = boardValue;
+          bestMove = move;
+        }
+      } else { // Black's turn
+        if (boardValue < bestValue) {
+          bestValue = boardValue;
+          bestMove = move;
+        }
+      }
+    }
+    return bestMove || moves[0];
+  }
+
+  // For levels 9-10, choose from the top 3 best moves.
+  if (level <= 10) {
+      const moveEvaluations: {move: Move, score: number}[] = [];
+      for (const move of moves) {
+        const gameCopy = new Chess(game.fen());
+        gameCopy.move(move);
+
+        if (gameCopy.isCheckmate()) {
+          return move; // Immediate win is best
+        }
+        
+        moveEvaluations.push({move, score: evaluateBoard(gameCopy.board())});
+      }
+
+      // Sort by score (desc for white, asc for black)
+      moveEvaluations.sort((a, b) => isWhiteTurn ? b.score - a.score : a.score - b.score);
+
+      const topMoves = moveEvaluations.slice(0, 3).map(m => m.move);
+      if (topMoves.length === 0) return moves[Math.floor(Math.random() * moves.length)];
+      
+      // At level 10, 80% chance to pick the absolute best move.
+      if (level === 10 && Math.random() > 0.2) { 
+          return topMoves[0];
+      }
+      
+      // For level 9 (and 20% of level 10), pick randomly from the top 3.
+      return topMoves[Math.floor(Math.random() * topMoves.length)];
   }
   
-  // Easy difficulty or no captures for hard: pick a random move.
-  const randomMove = moves[Math.floor(Math.random() * moves.length)];
-  return randomMove;
+  // Fallback for any case not covered.
+  return moves[Math.floor(Math.random() * moves.length)];
 };
 
 
 export default function AiPlayPage() {
   const [game, setGame] = useState(new Chess());
   const [playerColor] = useState<'w' | 'b'>('w');
-  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('easy');
+  const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const { toast } = useToast();
   const { playSound } = useSound();
@@ -70,8 +166,8 @@ export default function AiPlayPage() {
     setGame(new Chess());
   }, []);
   
-  const handleDifficultyChange = (newDifficulty: 'easy' | 'hard') => {
-    setDifficulty(newDifficulty);
+  const handleDifficultyChange = (newLevel: string) => {
+    setAiLevel(parseInt(newLevel, 10));
     resetGame();
   }
 
@@ -94,7 +190,7 @@ export default function AiPlayPage() {
     // Realistic "thinking" delay for the AI
     const timer = setTimeout(() => {
       const gameCopy = new Chess(game.fen());
-      const aiMove = getAiMove(gameCopy, difficulty);
+      const aiMove = getAiMove(gameCopy, aiLevel);
       
       if (aiMove) {
         const result = gameCopy.move(aiMove);
@@ -110,7 +206,7 @@ export default function AiPlayPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, difficulty, playSound]);
+  }, [game, playerColor, aiLevel, playSound]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
@@ -130,7 +226,7 @@ export default function AiPlayPage() {
         <GameControls 
           onReset={resetGame} 
           isAiMode={true} 
-          aiDifficulty={difficulty}
+          aiDifficulty={aiLevel}
           onDifficultyChange={handleDifficultyChange}
         />
       </div>

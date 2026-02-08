@@ -16,8 +16,8 @@ import { Label } from '@/components/ui/label';
 interface GameControlsProps {
   onReset: () => void;
   isAiMode?: boolean;
-  aiDifficulty?: 'easy' | 'hard';
-  onDifficultyChange?: (difficulty: 'easy' | 'hard') => void;
+  aiDifficulty?: number;
+  onDifficultyChange?: (difficulty: string) => void;
   isOnlineMode?: boolean;
   roomCode?: string;
 }
@@ -51,13 +51,16 @@ export function GameControls({
         {isAiMode && onDifficultyChange && (
           <div>
             <Label className="text-sm font-medium text-muted-foreground">AI Difficulty</Label>
-            <Select onValueChange={onDifficultyChange} value={aiDifficulty}>
+            <Select onValueChange={onDifficultyChange} value={aiDifficulty?.toString()}>
               <SelectTrigger>
-                <SelectValue placeholder="Select difficulty" />
+                <SelectValue placeholder="Select level" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((level) => (
+                  <SelectItem key={level} value={level.toString()}>
+                    Level {level}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
