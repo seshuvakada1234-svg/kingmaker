@@ -40,34 +40,34 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
   }, [selectedSquare, game]);
 
   const handleSquareClick = (square: Square) => {
-    if (!isInteractable) return;
-
-    const pieceOnSquare = game.get(square);
-
-    // CRITICAL: In online mode, you can only interact with your own pieces.
-    if (playerColor && pieceOnSquare && pieceOnSquare.color !== playerColor) {
-      toast({
-        description: `Not your piece. You play as ${playerColor === 'w' ? 'White' : 'Black'}.`,
-        variant: 'destructive',
-        duration: 2000,
-      });
+    if (!isInteractable) {
+      if (!game.isGameOver()) {
+        toast({
+          description: "Not your turn to move.",
+          variant: "destructive",
+          duration: 2000,
+        });
+      }
       return;
     }
 
+    const pieceOnSquare = game.get(square);
+
     if (selectedSquare) {
-      // A piece is already selected, try to move it.
+      // A piece is selected, attempt to move it.
       const isMoveValid = game.moves({ square: selectedSquare, verbose: true }).some(m => m.to === square);
 
       if (isMoveValid) {
         const move = { from: selectedSquare, to: square, promotion: 'q' as const };
         const success = onMove(move);
+        // Deselect only on successful move. If the server rejects the move,
+        // the selection remains, allowing the user to try a different move.
         if (success) {
-          setSelectedSquare(null); // Deselect after a successful move
+          setSelectedSquare(null);
         }
-        // if move is not successful (e.g. server error), keep selection
-      } else if (pieceOnSquare && pieceOnSquare.color === playerColor) {
+      } else if (pieceOnSquare && playerColor && pieceOnSquare.color === playerColor) {
         // The target square is not a valid move, but it's another one of the player's pieces.
-        // So, we switch the selection to the new piece.
+        // We switch the selection to the new piece.
         setSelectedSquare(square);
       } else {
         // The target is not a valid move and not another of the player's pieces. Deselect.
@@ -75,17 +75,32 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
       }
     } else {
       // No piece is selected yet. Try to select one.
-      if (pieceOnSquare && (!playerColor || pieceOnSquare.color === playerColor)) {
-        if (pieceOnSquare.color === game.turn()) {
-          setSelectedSquare(square);
-        } else {
-          toast({
-            description: "Not your turn to move.",
-            variant: "destructive",
-            duration: 2000,
-          });
-        }
+      if (!pieceOnSquare) {
+        return; // Clicked an empty square.
       }
+
+      // CRITICAL: In online mode (when playerColor is set), you can only select your own pieces.
+      if (playerColor && pieceOnSquare.color !== playerColor) {
+        toast({
+          description: `Not your piece. You play as ${playerColor === 'w' ? 'White' : 'Black'}.`,
+          variant: 'destructive',
+          duration: 2000,
+        });
+        return;
+      }
+      
+      // Also ensure it's the correct turn, which is the main purpose of `isInteractable`,
+      // but this adds another layer of safety.
+      if(pieceOnSquare.color !== game.turn()) {
+        toast({
+          description: "Not your turn to move.",
+          variant: "destructive",
+          duration: 2000,
+        });
+        return;
+      }
+      
+      setSelectedSquare(square);
     }
   };
 
