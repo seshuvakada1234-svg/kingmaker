@@ -26,7 +26,16 @@ export default function OnlinePlayPage() {
 
   const [game, setGame] = useState(new Chess());
   const [playerColor, setPlayerColor] = useState<'w' | 'b' | null>(null);
-  const [playerSessionId] = useState(() => Math.random().toString(36).substring(2));
+  const [playerSessionId] = useState(() => {
+    if (typeof window === 'undefined') return Math.random().toString(36).substring(2);
+    const key = `kingmaker_session_${roomId}`;
+    let sessionId = localStorage.getItem(key);
+    if (!sessionId) {
+        sessionId = Math.random().toString(36).substring(2);
+        localStorage.setItem(key, sessionId);
+    }
+    return sessionId;
+  });
   const [status, setStatus] = useState<GameStatusType>('connecting');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -40,16 +49,17 @@ export default function OnlinePlayPage() {
       const updatedGame = new Chess(newGameData.fen);
       setGame(updatedGame);
     }
-    if (newGameData && newGameData.status) {
-      // Only update status if it's different, to avoid re-renders
-      setStatus(prevStatus => prevStatus !== newGameData.status ? newGameData.status : prevStatus);
+    // The status from firestore can be 'waiting' or 'playing'.
+    // The local status can also be 'connecting', 'error', etc.
+    if (newGameData && newGameData.status && ['waiting', 'playing', 'finished'].includes(newGameData.status)) {
+      setStatus(newGameData.status);
     }
   }, [game]);
 
   useEffect(() => {
-    if (!roomId || !playerSessionId) {
+    if (!roomId) {
       setStatus('error');
-      setErrorMessage('Invalid room or session.');
+      setErrorMessage('Invalid room ID.');
       return;
     }
 
@@ -60,6 +70,7 @@ export default function OnlinePlayPage() {
       if (status === 'connecting') {
         setStatus('error');
         setErrorMessage('Connection timed out. Please check your internet connection and try again.');
+        if (unsubscribeRef.current) unsubscribeRef.current();
       }
     }, CONNECTION_TIMEOUT);
 
@@ -70,49 +81,41 @@ export default function OnlinePlayPage() {
 
           if (isCreating) {
             if (gameDoc.exists()) {
-              // A player is trying to create a room that already exists.
-              // This can happen if they refresh the page. We let them rejoin if they were white.
               const gameData = gameDoc.data();
               if (gameData.players.white === playerSessionId) {
-                setPlayerColor('w');
+                setPlayerColor('w'); // Rejoining as creator
               } else {
-                 // The room is taken by another white player.
                 throw new Error('This room code is already in use.');
               }
             } else {
-              // Room doesn't exist, create it as the white player.
+              // Creating a new game
               const newGame = new Chess();
-              const gameData = {
+              transaction.set(gameRef, {
                 fen: newGame.fen(),
                 players: { white: playerSessionId, black: null },
                 status: 'waiting',
                 createdAt: serverTimestamp(),
-              };
-              transaction.set(gameRef, gameData);
+              });
               setPlayerColor('w');
             }
-          } else {
-            // This player is joining an existing room.
+          } else { // Joining an existing game
             if (!gameDoc.exists()) {
               throw new Error('Room not found. Please check the code and try again.');
             }
             
             const gameData = gameDoc.data();
-            const { players } = gameData;
-
-            if (players.white === playerSessionId) {
-              setPlayerColor('w'); // Rejoining as white
-            } else if (players.black === playerSessionId) {
-              setPlayerColor('b'); // Rejoining as black
-            } else if (!players.black) {
-              // The black spot is open, so join as the black player.
-              transaction.update(gameRef, { 
+            if (gameData.players.white === playerSessionId) {
+              setPlayerColor('w'); // Rejoining as White
+            } else if (gameData.players.black === playerSessionId) {
+              setPlayerColor('b'); // Rejoining as Black
+            } else if (!gameData.players.black) {
+              // Black spot is open, join as Black
+              transaction.update(gameRef, {
                 'players.black': playerSessionId,
                 status: 'playing',
               });
               setPlayerColor('b');
             } else {
-              // Both spots are taken by other players.
               throw new Error('This room is full.');
             }
           }
@@ -125,9 +128,11 @@ export default function OnlinePlayPage() {
         return;
       }
 
+      // If we reach here, transaction was successful. Start listener.
       if (unsubscribeRef.current) unsubscribeRef.current();
+      
       unsubscribeRef.current = onSnapshot(gameRef, (doc) => {
-        clearTimeout(connectionTimeout);
+        clearTimeout(connectionTimeout); // Stop the timeout on first successful read
         if (doc.exists()) {
           handleGameUpdate(doc.data());
         } else {
@@ -150,9 +155,10 @@ export default function OnlinePlayPage() {
         unsubscribeRef.current();
       }
     };
-  // The dependency array is intentionally sparse to only run this effect once on mount.
+  // The dependency array is intentionally sparse to only run this effect once.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, playerSessionId]);
+  }, [roomId]);
+
 
   useEffect(() => {
     const currentFen = game.fen();
@@ -170,6 +176,7 @@ export default function OnlinePlayPage() {
   }, [game, playSound]);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
+    // This check is the final guard before sending to Firestore
     if (!playerColor || game.turn() !== playerColor || status !== 'playing') {
       toast({ title: "Cannot make move", description: "It's not your turn or the game isn't active.", variant: "destructive" });
       return false;
@@ -179,26 +186,23 @@ export default function OnlinePlayPage() {
     const moveResult = gameCopy.move(move);
   
     if (!moveResult) {
-      // This case should be rare since the board UI validates moves, but it's a good safeguard.
+      // This should not happen if the board UI is correct, but serves as a safeguard.
       toast({ title: "Invalid Move", variant: "destructive" });
       return false; 
     }
     
-    // Optimistic UI update
     const fenBeforeMove = game.fen();
-    setGame(gameCopy);
+    setGame(gameCopy); // Optimistic update
   
-    // Sync with Firestore
     const gameRef = doc(db, 'games', roomId);
     setDoc(gameRef, { fen: gameCopy.fen() }, { merge: true }).catch((e) => {
       console.error("Failed to sync move:", e);
       toast({
         title: "Sync Error",
-        description: "Your move could not be saved to the server. The game may be out of sync.",
+        description: "Your move could not be saved. The game may be out of sync.",
         variant: "destructive"
       });
-      // Revert the optimistic update on failure
-      setGame(new Chess(fenBeforeMove));
+      setGame(new Chess(fenBeforeMove)); // Revert on failure
     });
   
     return true;
@@ -211,11 +215,10 @@ export default function OnlinePlayPage() {
     }
     const newGame = new Chess();
     const gameRef = doc(db, 'games', roomId);
-    // Reset the game, keeping the original white player and setting black to null.
     await setDoc(gameRef, {
       fen: newGame.fen(),
-      players: { white: playerSessionId, black: null },
       status: 'waiting',
+      players: { white: playerSessionId, black: null }
     }, { merge: true });
   };
 
@@ -234,7 +237,7 @@ export default function OnlinePlayPage() {
     );
   }
 
-  if (status === 'waiting') {
+  if (status === 'waiting' && playerColor === 'w') {
     const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/play/online/${roomId}` : '';
     const handleCopy = () => {
       navigator.clipboard.writeText(inviteUrl);
@@ -252,7 +255,7 @@ export default function OnlinePlayPage() {
           >
             {roomId}
           </div>
-          <p className="text-sm text-muted-foreground">Or share the full invite link. The game will begin automatically when they join.</p>
+          <p className="text-sm text-muted-foreground">The game will begin automatically when they join.</p>
         </CardContent>
       </Card>
     );
@@ -263,7 +266,7 @@ export default function OnlinePlayPage() {
       <div className="w-full lg:w-64 order-2 lg:order-1">
         <GameStatus game={game} isThinking={status === 'playing' && game.turn() !== playerColor} />
         <MoveHistory game={game} />
-        <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>
+        {playerColor && <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>}
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center">
         <Chessboard
@@ -271,7 +274,7 @@ export default function OnlinePlayPage() {
           onMove={handleMove}
           boardOrientation={orientation}
           playerColor={playerColor}
-          isInteractable={!game.isGameOver() && game.turn() === playerColor && !!playerColor && status === 'playing'}
+          isInteractable={!game.isGameOver() && status === 'playing' && game.turn() === playerColor}
         />
         <AdBanner />
       </div>
