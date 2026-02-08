@@ -29,7 +29,6 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const { toast } = useToast();
 
-  const board = useMemo(() => game.board(), [game.fen()]);
   const history = useMemo(() => game.history({ verbose: true }), [game.fen()]);
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
@@ -113,7 +112,7 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
         <div key={rank} className="flex">
           {files.split('').map((file, j) => {
             const square = (file + rank) as Square;
-            const pieceOnSquare = board[i][j];
+            const pieceOnSquare = game.get(square);
             const isLight = (i + j) % 2 !== 0;
 
             const PieceComponent = pieceOnSquare ? pieceComponents[`${pieceOnSquare.color}${pieceOnSquare.type.toUpperCase()}`] : null;
