@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Chess } from 'chess.js';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, setDoc, serverTimestamp, runTransaction, type Unsubscribe } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, runTransaction, type Unsubscribe, type DocumentData } from 'firebase/firestore';
 import { Chessboard } from '@/components/game/Chessboard';
 import { GameStatus } from '@/components/game/GameStatus';
 import { MoveHistory } from '@/components/game/MoveHistory';
@@ -25,7 +25,11 @@ export default function OnlinePlayPage() {
   const roomId = params.roomId as string;
 
   const [game, setGame] = useState(new Chess());
-  const [playerColor, setPlayerColor] = useState<'w' | 'b' | null>(null);
+  const [gameDoc, setGameDoc] = useState<DocumentData | null>(null); // State for the entire game document
+  const [status, setStatus] = useState<GameStatusType>('connecting');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // This session ID uniquely identifies the user's browser for this game room.
   const [playerSessionId] = useState(() => {
     if (typeof window === 'undefined') return Math.random().toString(36).substring(2);
     const key = `kingmaker_session_${roomId}`;
@@ -36,25 +40,19 @@ export default function OnlinePlayPage() {
     }
     return sessionId;
   });
-  const [status, setStatus] = useState<GameStatusType>('connecting');
-  const [errorMessage, setErrorMessage] = useState('');
 
   const { toast } = useToast();
   const { playSound } = useSound();
   const prevFenRef = useRef<string>(game.fen());
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
-  const handleGameUpdate = useCallback((newGameData: any) => {
-    if (newGameData && newGameData.fen && game.fen() !== newGameData.fen) {
-      const updatedGame = new Chess(newGameData.fen);
-      setGame(updatedGame);
-    }
-    // The status from firestore can be 'waiting' or 'playing'.
-    // The local status can also be 'connecting', 'error', etc.
-    if (newGameData && newGameData.status && ['waiting', 'playing', 'finished'].includes(newGameData.status)) {
-      setStatus(newGameData.status);
-    }
-  }, [game]);
+  // Derive playerColor from the game document and session ID. This is the single source of truth.
+  const playerColor = useMemo(() => {
+    if (!gameDoc?.players || !playerSessionId) return null;
+    if (gameDoc.players.white === playerSessionId) return 'w';
+    if (gameDoc.players.black === playerSessionId) return 'b';
+    return null;
+  }, [gameDoc, playerSessionId]);
 
   useEffect(() => {
     if (!roomId) {
@@ -76,19 +74,19 @@ export default function OnlinePlayPage() {
 
     const initAndListen = async () => {
       try {
+        // Use a transaction to safely create or join the game.
         await runTransaction(db, async (transaction) => {
-          const gameDoc = await transaction.get(gameRef);
+          const remoteGameDoc = await transaction.get(gameRef);
 
           if (isCreating) {
-            if (gameDoc.exists()) {
-              const gameData = gameDoc.data();
-              if (gameData.players.white === playerSessionId) {
-                setPlayerColor('w'); // Rejoining as creator
-              } else {
+            if (remoteGameDoc.exists()) {
+              // Room already exists. Check if we are the creator rejoining.
+              if (remoteGameDoc.data().players.white !== playerSessionId) {
                 throw new Error('This room code is already in use.');
               }
+              // If we are rejoining, we do nothing in the transaction. The snapshot listener will sync state.
             } else {
-              // Creating a new game
+              // Creating a new game. The creator is always White.
               const newGame = new Chess();
               transaction.set(gameRef, {
                 fen: newGame.fen(),
@@ -96,28 +94,24 @@ export default function OnlinePlayPage() {
                 status: 'waiting',
                 createdAt: serverTimestamp(),
               });
-              setPlayerColor('w');
             }
           } else { // Joining an existing game
-            if (!gameDoc.exists()) {
+            if (!remoteGameDoc.exists()) {
               throw new Error('Room not found. Please check the code and try again.');
             }
             
-            const gameData = gameDoc.data();
-            if (gameData.players.white === playerSessionId) {
-              setPlayerColor('w'); // Rejoining as White
-            } else if (gameData.players.black === playerSessionId) {
-              setPlayerColor('b'); // Rejoining as Black
-            } else if (!gameData.players.black) {
-              // Black spot is open, join as Black
+            const gameData = remoteGameDoc.data();
+            // If the black player slot is open, join as Black.
+            if (!gameData.players.black && gameData.players.white !== playerSessionId) {
               transaction.update(gameRef, {
                 'players.black': playerSessionId,
                 status: 'playing',
               });
-              setPlayerColor('b');
-            } else {
+            } else if (gameData.players.white !== playerSessionId && gameData.players.black !== playerSessionId) {
+              // If we are not white or black and both are set, the room is full.
               throw new Error('This room is full.');
             }
+            // If we are already in the game (white or black), do nothing. The listener will sync.
           }
         });
 
@@ -128,13 +122,19 @@ export default function OnlinePlayPage() {
         return;
       }
 
-      // If we reach here, transaction was successful. Start listener.
+      // If we reach here, the transaction was successful or not needed.
+      // Start listening for real-time game updates.
       if (unsubscribeRef.current) unsubscribeRef.current();
       
       unsubscribeRef.current = onSnapshot(gameRef, (doc) => {
         clearTimeout(connectionTimeout); // Stop the timeout on first successful read
         if (doc.exists()) {
-          handleGameUpdate(doc.data());
+          const data = doc.data();
+          setGameDoc(data);
+          setGame(new Chess(data.fen));
+          if (['waiting', 'playing', 'finished'].includes(data.status)) {
+            setStatus(data.status);
+          }
         } else {
           setStatus('error');
           setErrorMessage('The game room was deleted.');
@@ -176,9 +176,8 @@ export default function OnlinePlayPage() {
   }, [game, playSound]);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    // This check is the final guard before sending to Firestore
+    // Final guard before sending to Firestore: must be playing, and your turn.
     if (!playerColor || game.turn() !== playerColor || status !== 'playing') {
-      toast({ title: "Cannot make move", description: "It's not your turn or the game isn't active.", variant: "destructive" });
       return false;
     }
   
@@ -186,15 +185,15 @@ export default function OnlinePlayPage() {
     const moveResult = gameCopy.move(move);
   
     if (!moveResult) {
-      // This should not happen if the board UI is correct, but serves as a safeguard.
       toast({ title: "Invalid Move", variant: "destructive" });
       return false; 
     }
     
     const fenBeforeMove = game.fen();
-    setGame(gameCopy); // Optimistic update
+    setGame(gameCopy); // Optimistic update of local UI
   
     const gameRef = doc(db, 'games', roomId);
+    // Update the FEN in Firestore.
     setDoc(gameRef, { fen: gameCopy.fen() }, { merge: true }).catch((e) => {
       console.error("Failed to sync move:", e);
       toast({
@@ -202,13 +201,14 @@ export default function OnlinePlayPage() {
         description: "Your move could not be saved. The game may be out of sync.",
         variant: "destructive"
       });
-      setGame(new Chess(fenBeforeMove)); // Revert on failure
+      setGame(new Chess(fenBeforeMove)); // Revert optimistic update on failure
     });
   
-    return true;
+    return true; // Indicate success for UI purposes (e.g., deselecting piece)
   }, [game, playerColor, roomId, status, toast]);
 
   const resetGame = async () => {
+    // Only the creator of the room (White) can reset it.
     if (playerColor !== 'w') {
       toast({ title: "Only the host (White) can reset the game.", variant: "destructive" });
       return;
@@ -218,7 +218,7 @@ export default function OnlinePlayPage() {
     await setDoc(gameRef, {
       fen: newGame.fen(),
       status: 'waiting',
-      players: { white: playerSessionId, black: null }
+      players: { white: playerSessionId, black: null } // Reset players, kicking Black out
     }, { merge: true });
   };
 
@@ -237,6 +237,7 @@ export default function OnlinePlayPage() {
     );
   }
 
+  // Waiting screen for the creator (White)
   if (status === 'waiting' && playerColor === 'w') {
     const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/play/online/${roomId}` : '';
     const handleCopy = () => {
@@ -247,7 +248,7 @@ export default function OnlinePlayPage() {
       <Card className="w-full max-w-md text-center">
         <CardHeader><CardTitle>Waiting for Opponent</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <p>Share this room code with a friend:</p>
+          <p>Share this room code with a friend to play:</p>
           <div 
             className="p-2 border rounded-md bg-muted font-mono text-lg cursor-pointer hover:bg-muted/80 transition-colors" 
             onClick={handleCopy}
@@ -261,10 +262,12 @@ export default function OnlinePlayPage() {
     );
   }
 
+  const isMyTurn = !game.isGameOver() && status === 'playing' && game.turn() === playerColor;
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       <div className="w-full lg:w-64 order-2 lg:order-1">
-        <GameStatus game={game} isThinking={status === 'playing' && game.turn() !== playerColor} />
+        <GameStatus game={game} isThinking={status === 'playing' && !isMyTurn} />
         <MoveHistory game={game} />
         {playerColor && <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>}
       </div>
@@ -273,8 +276,8 @@ export default function OnlinePlayPage() {
           game={game}
           onMove={handleMove}
           boardOrientation={orientation}
-          playerColor={playerColor}
-          isInteractable={!game.isGameOver() && status === 'playing' && game.turn() === playerColor}
+          playerColor={playerColor} // Pass player color to enforce piece interaction rules
+          isInteractable={isMyTurn}
         />
         <AdBanner />
       </div>
