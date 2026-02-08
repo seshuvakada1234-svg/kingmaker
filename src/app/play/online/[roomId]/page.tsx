@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Chess, type Move } from 'chess.js';
+import { Chess } from 'chess.js';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, runTransaction, type Unsubscribe } from 'firebase/firestore';
 import { Chessboard } from '@/components/game/Chessboard';
 import { GameStatus } from '@/components/game/GameStatus';
 import { MoveHistory } from '@/components/game/MoveHistory';
@@ -32,79 +32,93 @@ export default function OnlinePlayPage() {
   const { playSound } = useSound();
   const prevFenRef = useRef<string>(game.fen());
 
-  const initGame = useCallback(async () => {
-    if (!roomId || !playerSessionId) return;
+  const initGame = useCallback(async (): Promise<Unsubscribe | null> => {
+    if (!roomId || !playerSessionId) return null;
 
     const gameRef = doc(db, 'games', roomId);
     const isCreating = searchParams.get('create') === 'true';
 
-    if (isCreating) {
-      // Create a new game
-      const newGame = new Chess();
-      const gameData = {
-        fen: newGame.fen(),
-        players: { white: playerSessionId, black: null },
-        status: 'waiting',
-        createdAt: serverTimestamp(),
-      };
-      await setDoc(gameRef, gameData);
-      setPlayerColor('w');
-    } else {
-      // Join an existing game
-      const docSnap = await getDoc(gameRef);
-      if (!docSnap.exists()) {
-        setStatus('error');
-        setErrorMessage('Room not found. Please check the code and try again.');
-        return;
-      }
-
-      const gameData = docSnap.data();
-      const { players } = gameData;
-
-      if (players.white === playerSessionId) {
-        setPlayerColor('w'); // Reconnecting as white
-      } else if (players.black === playerSessionId) {
-        setPlayerColor('b'); // Reconnecting as black
-      } else if (!players.black) {
-        // Join as black
-        await updateDoc(gameRef, {
-          'players.black': playerSessionId,
-          status: 'playing',
-        });
-        setPlayerColor('b');
+    try {
+      if (isCreating) {
+        const newGame = new Chess();
+        const gameData = {
+          fen: newGame.fen(),
+          players: { white: playerSessionId, black: null },
+          status: 'waiting',
+          createdAt: serverTimestamp(),
+        };
+        await setDoc(gameRef, gameData);
+        setPlayerColor('w');
       } else {
-        // Game is full
-        setStatus('error');
-        setErrorMessage('This room is full.');
-        return;
+        await runTransaction(db, async (transaction) => {
+          const gameDoc = await transaction.get(gameRef);
+          if (!gameDoc.exists()) {
+            throw new Error('Room not found. Please check the code and try again.');
+          }
+
+          const gameData = gameDoc.data();
+          const { players } = gameData;
+
+          if (players.white === playerSessionId) {
+            setPlayerColor('w');
+          } else if (players.black === playerSessionId) {
+            setPlayerColor('b');
+          } else if (!players.black) {
+            transaction.update(gameRef, {
+              'players.black': playerSessionId,
+              status: 'playing',
+            });
+            setPlayerColor('b');
+          } else {
+            throw new Error('This room is full.');
+          }
+        });
       }
+    } catch (e: any) {
+      setStatus('error');
+      setErrorMessage(e.message || 'Failed to create or join the room.');
+      return null;
     }
 
     // Set up the real-time listener
     const unsubscribe = onSnapshot(gameRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data();
-        setGame(new Chess(data.fen));
+        if (data.fen && game.fen() !== data.fen) {
+          setGame(new Chess(data.fen));
+        }
         setStatus(data.status);
       } else {
         setStatus('error');
         setErrorMessage('The game room was deleted.');
       }
+    }, (error) => {
+      setStatus('error');
+      setErrorMessage('Lost connection to game room.');
     });
 
-    return () => unsubscribe();
-  }, [roomId, playerSessionId, searchParams, toast]);
+    return unsubscribe;
+  }, [roomId, playerSessionId, searchParams]);
 
   useEffect(() => {
-    const unsubscribePromise = initGame();
+    let unsubscribe: Unsubscribe | null = null;
+    
+    const setupGame = async () => {
+      unsubscribe = await initGame();
+    }
+    
+    setupGame();
+
     return () => {
-      unsubscribePromise?.then(unsub => unsub && unsub());
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [initGame]);
 
   useEffect(() => {
     const currentFen = game.fen();
-    if (prevFenRef.current && prevFenRef.current !== currentFen && game.history().length > 0) {
+    if (prevFenRef.current !== currentFen && game.history().length > 0) {
       const lastMove = game.history({ verbose: true }).slice(-1)[0];
       if (lastMove.flags.includes('c')) {
         playSound('capture');
@@ -130,10 +144,13 @@ export default function OnlinePlayPage() {
       const tempGame = new Chess(game.fen());
       const result = tempGame.move(move);
       if (result) {
-        await updateDoc(doc(db, 'games', roomId), { fen: tempGame.fen() });
+        await runTransaction(db, async (transaction) => {
+          transaction.update(doc(db, 'games', roomId), { fen: tempGame.fen() });
+        });
         return true;
       }
     } catch(e) {
+      // Invalid move, chess.js throws an error
       return false;
     }
     return false;
