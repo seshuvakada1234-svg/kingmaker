@@ -43,7 +43,7 @@ export default function OnlinePlayPage() {
     return sessionId;
   }, [roomId]);
 
-  const playerColor = useMemo<'w' | 'b' | null>(() => {
+  const myColor = useMemo<'w' | 'b' | null>(() => {
     if (!gameDoc?.players || !playerSessionId) return null;
     if (gameDoc.players.white === playerSessionId) return 'w';
     if (gameDoc.players.black === playerSessionId) return 'b';
@@ -153,7 +153,7 @@ export default function OnlinePlayPage() {
 
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (!playerColor || game.turn() !== playerColor || status !== 'playing') {
+    if (!myColor || game.turn() !== myColor || status !== 'playing') {
       return false;
     }
   
@@ -178,10 +178,10 @@ export default function OnlinePlayPage() {
     });
   
     return true;
-  }, [game, playerColor, roomId, status, toast, gameDoc]);
+  }, [game, myColor, roomId, status, toast, gameDoc]);
 
   const resetGame = async () => {
-    if (playerColor !== 'w') {
+    if (myColor !== 'w') {
       toast({ title: "Only the host (White) can reset the game.", variant: "destructive" });
       return;
     }
@@ -194,7 +194,7 @@ export default function OnlinePlayPage() {
     }, { merge: true });
   };
 
-  const orientation = playerColor === 'b' ? 'black' : 'white';
+  const orientation = myColor === 'b' ? 'black' : 'white';
   
   if (status === 'connecting' || !playerSessionId || !gameDoc) {
     return <div className="flex flex-col items-center justify-center min-h-screen gap-4"><Skeleton className="h-96 w-96" /><p>Connecting to room {roomId}...</p></div>;
@@ -209,7 +209,7 @@ export default function OnlinePlayPage() {
     );
   }
 
-  if (status === 'waiting' && playerColor === 'w') {
+  if (status === 'waiting' && myColor === 'w') {
     const inviteUrl = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
     const handleCopy = () => {
       navigator.clipboard.writeText(inviteUrl);
@@ -233,21 +233,21 @@ export default function OnlinePlayPage() {
     );
   }
   
-  const isMyTurn = status === 'playing' && game.turn() === playerColor;
+  const isMyTurn = status === 'playing' && game.turn() === myColor;
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       <div className="w-full lg:w-64 order-2 lg:order-1">
         <GameStatus game={game} isThinking={status === 'playing' && !isMyTurn} />
         <MoveHistory game={game} />
-        {playerColor && <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>}
+        {myColor && <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>}
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center">
         <Chessboard
           game={game}
           onMove={handleMove}
           boardOrientation={orientation}
-          playerColor={playerColor}
+          playerColor={myColor}
           isInteractable={isMyTurn}
         />
         <AdBanner />
