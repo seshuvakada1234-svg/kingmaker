@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "game": {
+      "title": "Game",
+      "description": "Represents a single chess game session.",
+      "type": "object",
+      "properties": {
+        "fen": {
+          "type": "string",
+          "description": "The board state in Forsyth–Edwards Notation."
+        },
+        "players": {
+          "type": "object",
+          "properties": {
+            "white": {
+              "type": ["string", "null"],
+              "description": "Session ID of the white player."
+            },
+            "black": {
+              "type": ["string", "null"],
+              "description": "Session ID of the black player."
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["waiting", "playing", "finished"],
+          "description": "The current status of the game."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the game was created."
+        }
+      },
+      "required": ["fen", "players", "status", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": []
+  },
+  "firestore": {
+    "/games/{gameId}": {
+      "schema": {
+        "$ref": "#/entities/game"
+      },
+      "description": "Stores all the chess game rooms."
+    }
+  }
+}

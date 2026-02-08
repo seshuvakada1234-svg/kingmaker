@@ -14,11 +14,14 @@ export function OnlineGameForm() {
 
   const handleOnlinePlay = () => {
     try {
-      if (roomId.trim()) {
-        router.push(`/play/online/${roomId.trim()}`);
+      const roomToJoin = roomId.trim();
+      if (roomToJoin) {
+        // Attempting to join a specific room
+        router.push(`/play/online/${roomToJoin}`);
       } else {
+        // Creating a new room
         const newRoomId = nanoid(6);
-        router.push(`/play/online/${newRoomId}`);
+        router.push(`/play/online/${newRoomId}?create=true`);
       }
     } catch (error) {
       toast({

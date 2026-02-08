@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // For development purposes, allow anyone to read and write to the games collection.
+    // In a production app, you would want to secure this.
+    match /games/{gameId} {
+      allow read, write: if true;
+    }
+  }
+}
