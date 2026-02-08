@@ -14,9 +14,6 @@ export default function Home() {
             kingmaker
           </h1>
         </div>
-        <p className="text-lg text-muted-foreground">
-          Your modern hub for local, AI, and online chess.
-        </p>
       </header>
       <main className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
         <Card className="hover:shadow-lg hover:border-accent transition-all duration-300">
@@ -62,9 +59,6 @@ export default function Home() {
           </CardContent>
         </Card>
       </main>
-      <footer className="mt-12 text-center text-muted-foreground text-sm">
-        <p>Built with Next.js, Firebase, and GenAI.</p>
-      </footer>
     </div>
   );
 }
