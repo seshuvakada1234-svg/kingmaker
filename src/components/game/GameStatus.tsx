@@ -6,12 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 interface GameStatusProps {
   game: Chess;
   isThinking?: boolean;
+  isAiMode?: boolean;
 }
 
-export function GameStatus({ game, isThinking }: GameStatusProps) {
+export function GameStatus({ game, isThinking, isAiMode }: GameStatusProps) {
   const turn = game.turn() === 'w' ? 'White' : 'Black';
   let statusText = `${turn}'s turn`;
-  if(isThinking) statusText = 'AI is thinking...';
+  if (isThinking && isAiMode) {
+    statusText = 'AI is thinking...';
+  }
   
   if (game.isCheckmate()) {
     statusText = `Checkmate! ${turn === 'White' ? 'Black' : 'White'} wins.`;

@@ -115,7 +115,7 @@ export default function AiPlayPage() {
   return (
     <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       <div className="w-full lg:w-64 order-2 lg:order-1">
-        <GameStatus game={game} isThinking={isAiThinking} />
+        <GameStatus game={game} isThinking={isAiThinking} isAiMode={true} />
         <MoveHistory game={game} />
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex justify-center">
