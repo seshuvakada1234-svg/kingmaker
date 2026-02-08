@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useMemo, type SVGProps } from 'react';
-import type { Chess, Square, Piece, Move } from 'chess.js';
+import type { Chess, Square, Piece } from 'chess.js';
 import { cn } from '@/lib/utils';
 import * as Pieces from '@/components/icons/ChessPieces';
+import { useToast } from '@/hooks/use-toast';
 
 type PieceComponentType = (props: SVGProps<SVGSVGElement>) => JSX.Element;
 
@@ -25,6 +26,7 @@ interface ChessboardProps {
 
 export function Chessboard({ game, onMove, boardOrientation = 'white', isInteractable }: ChessboardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+  const { toast } = useToast();
 
   const board = useMemo(() => game.board(), [game.fen()]);
   const history = useMemo(() => game.history({ verbose: true }), [game.fen()]);
@@ -39,41 +41,56 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
   const handleSquareClick = (square: Square) => {
     if (!isInteractable) return;
 
-    if (selectedSquare) {
-      if (selectedSquare === square) {
-        setSelectedSquare(null);
-        return;
-      }
+    const piece = game.get(square);
+    const turn = game.turn();
 
+    // No piece is selected yet, try to select one
+    if (!selectedSquare) {
+      if (piece && piece.color === turn) {
+        setSelectedSquare(square);
+      } else if (piece) {
+        // Tried to select opponent's piece
+        toast({
+          description: "Not your piece to move.",
+          variant: "destructive",
+          duration: 2000,
+        });
+      }
+      return;
+    }
+
+    // A piece is already selected.
+    // Clicking the same piece again deselects it.
+    if (selectedSquare === square) {
+      setSelectedSquare(null);
+      return;
+    }
+
+    // Try to make a move from the selected square to the clicked square
+    const isMoveValid = game.moves({ square: selectedSquare, verbose: true }).some(m => m.to === square);
+
+    if (isMoveValid) {
       const move = { from: selectedSquare, to: square, promotion: 'q' as 'q' };
-      
-      const isMoveValid = game.moves({ square: selectedSquare, verbose: true }).some(m => m.to === square);
-      
-      if (isMoveValid) {
-        const success = onMove(move);
-        if (success) {
-          setSelectedSquare(null);
-        } else {
-          // If move is invalid from parent, maybe it's another piece to select
-          const piece = game.get(square);
-          if (piece && piece.color === game.turn()) {
-            setSelectedSquare(square);
-          } else {
-            setSelectedSquare(null);
-          }
-        }
+      const success = onMove(move);
+      if (success) {
+        setSelectedSquare(null);
       } else {
-        const piece = game.get(square);
-        if (piece && piece.color === game.turn()) {
+        // Parent rejected move. It might be a race condition in online play.
+        // Check if the user is trying to select a different piece of their own.
+        if (piece && piece.color === turn) {
           setSelectedSquare(square);
         } else {
-          setSelectedSquare(null);
+          setSelectedSquare(null); // Deselect
         }
       }
     } else {
-      const piece = game.get(square);
-      if (piece && piece.color === game.turn()) {
+      // The destination is not a valid move.
+      // Check if the user is trying to select a different piece of their own.
+      if (piece && piece.color === turn) {
         setSelectedSquare(square);
+      } else {
+        // Clicked on an empty invalid square or an opponent piece, so deselect.
+        setSelectedSquare(null);
       }
     }
   };
@@ -87,10 +104,10 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
         <div key={rank} className="flex">
           {files.split('').map((file, j) => {
             const square = (file + rank) as Square;
-            const piece = board[i][j];
+            const pieceOnSquare = board[i][j];
             const isLight = (i + j) % 2 !== 0;
 
-            const PieceComponent = piece ? pieceComponents[`${piece.color}${piece.type.toUpperCase()}`] : null;
+            const PieceComponent = pieceOnSquare ? pieceComponents[`${pieceOnSquare.color}${pieceOnSquare.type.toUpperCase()}`] : null;
 
             return (
               <div
