@@ -270,6 +270,7 @@ export default function OnlinePlayPage() {
           game={game}
           onMove={handleMove}
           boardOrientation={orientation}
+          playerColor={playerColor}
           isInteractable={!game.isGameOver() && game.turn() === playerColor && !!playerColor && status === 'playing'}
         />
         <AdBanner />

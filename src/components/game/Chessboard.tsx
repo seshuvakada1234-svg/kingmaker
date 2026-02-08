@@ -22,9 +22,10 @@ interface ChessboardProps {
   onMove: (move: { from: Square; to: Square; promotion?: 'q' | 'r' | 'b' | 'n' }) => boolean;
   boardOrientation?: 'white' | 'black';
   isInteractable: boolean;
+  playerColor?: 'w' | 'b' | null;
 }
 
-export function Chessboard({ game, onMove, boardOrientation = 'white', isInteractable }: ChessboardProps) {
+export function Chessboard({ game, onMove, boardOrientation = 'white', isInteractable, playerColor }: ChessboardProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const { toast } = useToast();
 
@@ -44,12 +45,23 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
     const piece = game.get(square);
     const turn = game.turn();
 
+    // In online mode, a player can only interact with their own pieces.
+    // This is the primary guard against incorrect interaction.
+    if (playerColor && piece && piece.color !== playerColor) {
+      toast({
+        description: "Not your piece to move.",
+        variant: "destructive",
+        duration: 2000,
+      });
+      return; // Exit immediately, preventing selection.
+    }
+
     // No piece is selected yet, try to select one
     if (!selectedSquare) {
       if (piece && piece.color === turn) {
         setSelectedSquare(square);
       } else if (piece) {
-        // Tried to select opponent's piece
+        // This case now primarily handles local/AI games, or if it's not the current player's turn.
         toast({
           description: "Not your piece to move.",
           variant: "destructive",
@@ -75,9 +87,9 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
       if (success) {
         setSelectedSquare(null);
       } else {
-        // Parent rejected move. It might be a race condition in online play.
-        // Check if the user is trying to select a different piece of their own.
-        if (piece && piece.color === turn) {
+        // Parent rejected move. In online play, this could be a sync issue.
+        // We'll check if the user is attempting to select another of their valid pieces.
+        if (piece && piece.color === turn && (!playerColor || piece.color === playerColor)) {
           setSelectedSquare(square);
         } else {
           setSelectedSquare(null); // Deselect
@@ -86,7 +98,7 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
     } else {
       // The destination is not a valid move.
       // Check if the user is trying to select a different piece of their own.
-      if (piece && piece.color === turn) {
+      if (piece && piece.color === turn && (!playerColor || piece.color === playerColor)) {
         setSelectedSquare(square);
       } else {
         // Clicked on an empty invalid square or an opponent piece, so deselect.
@@ -114,12 +126,12 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
                 key={square}
                 onClick={() => handleSquareClick(square)}
                 className={cn(
-                  'relative aspect-square w-full flex items-center justify-center cursor-pointer transition-all duration-75',
+                  'relative aspect-square w-full flex items-center justify-center transition-all duration-75',
                   isLight ? 'bg-wood-light' : 'bg-wood-dark',
                   {
                     'ring-2 ring-inset ring-selection-gold': selectedSquare === square,
                   },
-                  isInteractable ? 'hover:brightness-125' : ''
+                  isInteractable ? 'cursor-pointer hover:brightness-125' : ''
                 )}
               >
                 {possibleMoves.has(square) && (
