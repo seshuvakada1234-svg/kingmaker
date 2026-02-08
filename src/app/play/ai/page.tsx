@@ -7,6 +7,7 @@ import { MoveHistory } from '@/components/game/MoveHistory';
 import { GameControls } from '@/components/game/GameControls';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/contexts/SoundContext';
+import { GameOverScreen } from '@/components/game/GameOverScreen';
 
 /**
  * Determines the AI's next move based on the current game state and difficulty level.
@@ -135,6 +136,7 @@ const getAiMove = (game: Chess, level: number): Move | null => {
 
 export default function AiPlayPage() {
   const [game, setGame] = useState(new Chess());
+  const [gameOver, setGameOver] = useState<string | null>(null);
   const [playerColor] = useState<'w' | 'b'>('w');
   const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
@@ -142,7 +144,7 @@ export default function AiPlayPage() {
   const { playSound } = useSound();
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (game.turn() !== playerColor) return false;
+    if (gameOver || game.turn() !== playerColor) return false;
     try {
       const tempGame = new Chess(game.fen());
       const result = tempGame.move(move);
@@ -160,10 +162,11 @@ export default function AiPlayPage() {
       return false;
     }
     return false;
-  }, [game, playerColor, toast, playSound]);
+  }, [game, playerColor, toast, playSound, gameOver]);
 
   const resetGame = useCallback(() => {
     setGame(new Chess());
+    setGameOver(null);
   }, []);
   
   const handleDifficultyChange = (newLevel: string) => {
@@ -173,10 +176,14 @@ export default function AiPlayPage() {
 
   useEffect(() => {
     if (game.isGameOver()) {
-      if (game.isCheckmate()) {
-        playSound('win');
-      } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
-        playSound('draw');
+      if (!gameOver) {
+        if (game.isCheckmate()) {
+          playSound('win');
+          setGameOver(game.turn() === 'b' ? 'white_win' : 'black_win');
+        } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
+          playSound('draw');
+          setGameOver('draw');
+        }
       }
       return;
     }
@@ -206,10 +213,11 @@ export default function AiPlayPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, aiLevel, playSound]);
+  }, [game, playerColor, aiLevel, playSound, gameOver]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
+    <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
+      {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
         <GameStatus game={game} isThinking={isAiThinking} isAiMode={true} />
         <MoveHistory game={game} />

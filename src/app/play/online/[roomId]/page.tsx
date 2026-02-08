@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSound } from '@/contexts/SoundContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GameOverScreen } from '@/components/game/GameOverScreen';
 
 type GameStatusType = 'connecting' | 'waiting' | 'playing' | 'finished' | 'error' | 'full';
 
@@ -28,6 +29,7 @@ export default function OnlinePlayPage() {
   const [gameDoc, setGameDoc] = useState<DocumentData | null>(null);
   const [status, setStatus] = useState<GameStatusType>('connecting');
   const [errorMessage, setErrorMessage] = useState('');
+  const [gameOver, setGameOver] = useState<string | null>(null);
   
   const { toast } = useToast();
   const { playSound } = useSound();
@@ -111,23 +113,39 @@ export default function OnlinePlayPage() {
         clearTimeout(connectionTimeout);
         if (doc.exists()) {
           const data = doc.data();
+          const newGame = new Chess(data.fen);
           const currentFen = game.fen();
           setGameDoc(data);
-          setGame(new Chess(data.fen));
+          setGame(newGame);
 
           if (data.status === 'playing' && status !== 'playing' && data.players.black) {
              playSound('win'); // Or a "player joined" sound
           }
 
-          if (currentFen !== data.fen) {
+          if (currentFen !== data.fen && !newGame.isGameOver()) {
             const tempGame = new Chess(data.fen);
             const lastMove = tempGame.history({ verbose: true }).slice(-1)[0];
             if (lastMove?.flags.includes('c')) playSound('capture');
             else playSound('move');
           }
           
-          if (['waiting', 'playing', 'finished'].includes(data.status)) {
-            setStatus(data.status);
+          if (newGame.isGameOver()) {
+            if (!gameOver) {
+              if (newGame.isCheckmate()) {
+                playSound('win');
+                setGameOver(newGame.turn() === 'b' ? 'white_win' : 'black_win');
+              } else {
+                playSound('draw');
+                setGameOver('draw');
+              }
+            }
+          } else if (gameOver) {
+            setGameOver(null);
+          }
+
+          const gameStatus = newGame.isGameOver() ? 'finished' : data.status;
+          if (['waiting', 'playing', 'finished'].includes(gameStatus)) {
+            setStatus(gameStatus);
           }
         } else {
           setStatus('error');
@@ -149,11 +167,11 @@ export default function OnlinePlayPage() {
         unsubscribe();
       }
     };
-  }, [roomId, playerSessionId, searchParams, playSound, game, status]);
+  }, [roomId, playerSessionId, searchParams, playSound]);
 
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (!myColor || game.turn() !== myColor || status !== 'playing') {
+    if (gameOver || !myColor || game.turn() !== myColor || status !== 'playing') {
       return false;
     }
   
@@ -165,20 +183,33 @@ export default function OnlinePlayPage() {
     
     // Optimistic update
     setGame(gameCopy);
+
+    const isGameOver = gameCopy.isGameOver();
+    const newStatus = isGameOver ? 'finished' : 'playing';
+
+    if (isGameOver) {
+      if (gameCopy.isCheckmate()) {
+        playSound('win');
+        setGameOver(gameCopy.turn() === 'b' ? 'white_win' : 'black_win');
+      } else {
+        playSound('draw');
+        setGameOver('draw');
+      }
+    }
   
     const gameRef = doc(db, 'games', roomId);
-    setDoc(gameRef, { fen: gameCopy.fen() }, { merge: true }).catch((e) => {
+    setDoc(gameRef, { fen: gameCopy.fen(), status: newStatus }, { merge: true }).catch((e) => {
       console.error("Failed to sync move:", e);
       toast({
         title: "Sync Error",
         description: "Your move could not be saved. The game may be out of sync.",
         variant: "destructive"
       });
-      setGame(new Chess(gameDoc?.fen)); // Revert on failure
+      // The snapshot listener will automatically revert the game state on its next read.
     });
   
     return true;
-  }, [game, myColor, roomId, status, toast, gameDoc]);
+  }, [game, myColor, roomId, status, toast, gameOver, playSound]);
 
   const resetGame = async () => {
     if (myColor !== 'w') {
@@ -236,7 +267,8 @@ export default function OnlinePlayPage() {
   const isMyTurn = status === 'playing' && game.turn() === myColor;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
+    <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
+      {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
         <GameStatus game={game} isThinking={status === 'playing' && !isMyTurn} />
         <MoveHistory game={game} />
@@ -248,7 +280,7 @@ export default function OnlinePlayPage() {
           onMove={handleMove}
           boardOrientation={orientation}
           playerColor={myColor}
-          isInteractable={isMyTurn}
+          isInteractable={isMyTurn && !gameOver}
         />
         <AdBanner />
       </div>
