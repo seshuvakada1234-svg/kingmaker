@@ -193,8 +193,8 @@ export default function AiPlayPage() {
 
     if (undoCount >= 1) {
       toast({
-        title: "Rewarded Ad Required",
-        description: "Watching ad to unlock Undo…",
+        title: "Unlock Undo with an Ad",
+        description: "Watch a short ad to continue undoing moves.",
       });
 
       await new Promise<void>((resolve) => {
