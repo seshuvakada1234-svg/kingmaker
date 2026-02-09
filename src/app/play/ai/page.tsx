@@ -145,6 +145,8 @@ export default function AiPlayPage() {
   const { playSound } = useSound();
   const MAX_UNDOS = 10;
 
+  const isUndoPossible = game.history().length >= 2;
+
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor) return false;
     try {
@@ -178,23 +180,14 @@ export default function AiPlayPage() {
   }
   
   const handleUndo = useCallback(() => {
-    if (gameOver || game.turn() !== playerColor || isAiThinking) return;
+    if (gameOver || !isUndoPossible || isAiThinking) return;
 
     if (undoCount >= MAX_UNDOS) {
+      // The button will be disabled, but this is a safeguard.
       toast({
         variant: "destructive",
         title: "Undo limit reached",
         description: "You have used all your undos for this match.",
-      });
-      return;
-    }
-    
-    // There must be at least one full turn (player + AI) to undo.
-    if (game.history().length < 2) {
-      toast({
-        variant: "destructive",
-        title: "Cannot Undo",
-        description: "There are no moves to undo.",
       });
       return;
     }
@@ -215,7 +208,7 @@ export default function AiPlayPage() {
     setUndoCount(prev => prev + 1);
     playSound('move');
 
-  }, [game, gameOver, playerColor, isAiThinking, undoCount, toast, playSound]);
+  }, [game, gameOver, playerColor, isAiThinking, undoCount, toast, playSound, isUndoPossible]);
 
   useEffect(() => {
     if (game.isGameOver()) {
@@ -278,6 +271,7 @@ export default function AiPlayPage() {
           aiDifficulty={aiLevel}
           onDifficultyChange={handleDifficultyChange}
           onUndo={handleUndo}
+          isUndoPossible={isUndoPossible}
           undoCount={undoCount}
           maxUndos={MAX_UNDOS}
         />

@@ -21,6 +21,7 @@ interface GameControlsProps {
   isOnlineMode?: boolean;
   roomCode?: string;
   onUndo?: () => void;
+  isUndoPossible?: boolean;
   undoCount?: number;
   maxUndos?: number;
 }
@@ -33,6 +34,7 @@ export function GameControls({
   isOnlineMode,
   roomCode,
   onUndo,
+  isUndoPossible,
   undoCount = 0,
   maxUndos = 10,
 }: GameControlsProps) {
@@ -44,6 +46,18 @@ export function GameControls({
       // Optional: show a toast notification
     }
   };
+  
+  const isUndoDisabled = undoCount >= maxUndos || !isUndoPossible;
+
+  const getUndoHelperText = () => {
+    if (undoCount >= maxUndos) {
+      return <p className="text-xs text-destructive text-center font-semibold">Undo limit reached</p>;
+    }
+    if (!isUndoPossible) {
+      return <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo</p>;
+    }
+    return <p className="text-xs text-muted-foreground text-center">1 free undo • Next undos require ad</p>;
+  }
 
   return (
     <Card>
@@ -75,17 +89,13 @@ export function GameControls({
 
         {isAiMode && onUndo && (
           <div className="space-y-2 pt-4 border-t">
-            <Button onClick={onUndo} className="w-full" variant="outline" disabled={undoCount >= maxUndos}>
+            <Button onClick={onUndo} className="w-full" variant="outline" disabled={isUndoDisabled}>
               <Undo2 className="mr-2 h-4 w-4" /> Undo Move
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               Undos used: {undoCount} / {maxUndos}
             </p>
-            {undoCount >= maxUndos ? (
-              <p className="text-xs text-destructive text-center font-semibold">Undo limit reached</p>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center">1 free undo • Next undos require ad</p>
-            )}
+            {getUndoHelperText()}
           </div>
         )}
         
