@@ -179,11 +179,10 @@ export default function AiPlayPage() {
     resetGame();
   }
   
-  const handleUndo = useCallback(() => {
+  const handleUndo = useCallback(async () => {
     if (gameOver || !isUndoPossible || isAiThinking) return;
 
     if (undoCount >= MAX_UNDOS) {
-      // The button will be disabled, but this is a safeguard.
       toast({
         variant: "destructive",
         title: "Undo limit reached",
@@ -195,8 +194,32 @@ export default function AiPlayPage() {
     if (undoCount >= 1) {
       toast({
         title: "Rewarded Ad Required",
-        description: "In a real app, an ad would play now. For now, your undo is granted!",
-        duration: 4000,
+        description: "Watching ad to unlock Undo…",
+      });
+
+      await new Promise<void>((resolve) => {
+        // This is a placeholder for a real ad integration.
+        // It checks for a global object you would set up with your ad provider.
+        const ads = (window as any).google?.ads;
+        
+        if (ads) {
+          // If a real ad SDK is present, you would call it here.
+          // For now, we simulate success and resolve after a delay.
+          setTimeout(() => {
+             toast({ title: "Ad Complete!", description: "Undo granted." });
+             resolve();
+          }, 1500);
+        } else {
+          // Fallback for local dev or if ads are blocked/unavailable.
+          console.warn("Rewarded ad not available. Simulating ad for development.");
+          setTimeout(() => {
+            toast({
+              title: "Ad Complete!",
+              description: "Undo granted.",
+            });
+            resolve();
+          }, 1500);
+        }
       });
     }
 
