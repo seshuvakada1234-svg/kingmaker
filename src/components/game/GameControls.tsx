@@ -1,7 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { RotateCcw, Volume2, VolumeX, Undo2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -20,6 +20,9 @@ interface GameControlsProps {
   onDifficultyChange?: (difficulty: string) => void;
   isOnlineMode?: boolean;
   roomCode?: string;
+  onUndo?: () => void;
+  undoCount?: number;
+  maxUndos?: number;
 }
 
 export function GameControls({
@@ -29,6 +32,9 @@ export function GameControls({
   onDifficultyChange,
   isOnlineMode,
   roomCode,
+  onUndo,
+  undoCount = 0,
+  maxUndos = 10,
 }: GameControlsProps) {
   const { isSoundEnabled, toggleSound } = useSound();
 
@@ -48,6 +54,7 @@ export function GameControls({
         <Button onClick={onReset} className="w-full">
           <RotateCcw className="mr-2 h-4 w-4" /> New Game
         </Button>
+        
         {isAiMode && onDifficultyChange && (
           <div>
             <Label className="text-sm font-medium text-muted-foreground">AI Difficulty</Label>
@@ -65,6 +72,23 @@ export function GameControls({
             </Select>
           </div>
         )}
+
+        {isAiMode && onUndo && (
+          <div className="space-y-2 pt-4 border-t">
+            <Button onClick={onUndo} className="w-full" variant="outline" disabled={undoCount >= maxUndos}>
+              <Undo2 className="mr-2 h-4 w-4" /> Undo Move
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Undos used: {undoCount} / {maxUndos}
+            </p>
+            {undoCount >= maxUndos ? (
+              <p className="text-xs text-destructive text-center font-semibold">Undo limit reached</p>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center">1 free undo • Next undos require ad</p>
+            )}
+          </div>
+        )}
+        
         {isOnlineMode && roomCode && (
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">Room Code:</p>
@@ -73,7 +97,8 @@ export function GameControls({
             </Button>
           </div>
         )}
-        <div className="flex items-center justify-between pt-2">
+        
+        <div className="flex items-center justify-between pt-4 border-t">
           <Label htmlFor="sound-toggle" className="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground">
             {isSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
             <span>Sound</span>

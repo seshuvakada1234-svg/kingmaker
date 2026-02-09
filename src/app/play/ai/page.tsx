@@ -140,8 +140,10 @@ export default function AiPlayPage() {
   const [playerColor] = useState<'w' | 'b'>('w');
   const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [undoCount, setUndoCount] = useState(0);
   const { toast } = useToast();
   const { playSound } = useSound();
+  const MAX_UNDOS = 10;
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor) return false;
@@ -167,12 +169,53 @@ export default function AiPlayPage() {
   const resetGame = useCallback(() => {
     setGame(new Chess());
     setGameOver(null);
+    setUndoCount(0);
   }, []);
   
   const handleDifficultyChange = (newLevel: string) => {
     setAiLevel(parseInt(newLevel, 10));
     resetGame();
   }
+  
+  const handleUndo = useCallback(() => {
+    if (gameOver || game.turn() !== playerColor || isAiThinking) return;
+
+    if (undoCount >= MAX_UNDOS) {
+      toast({
+        variant: "destructive",
+        title: "Undo limit reached",
+        description: "You have used all your undos for this match.",
+      });
+      return;
+    }
+    
+    // There must be at least one full turn (player + AI) to undo.
+    if (game.history().length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Cannot Undo",
+        description: "There are no moves to undo.",
+      });
+      return;
+    }
+
+    if (undoCount >= 1) {
+      toast({
+        title: "Rewarded Ad Required",
+        description: "In a real app, an ad would play now. For now, your undo is granted!",
+        duration: 4000,
+      });
+    }
+
+    const gameCopy = new Chess(game.fen());
+    gameCopy.undo(); // Undo AI's move
+    gameCopy.undo(); // Undo player's move
+    
+    setGame(gameCopy);
+    setUndoCount(prev => prev + 1);
+    playSound('move');
+
+  }, [game, gameOver, playerColor, isAiThinking, undoCount, toast, playSound]);
 
   useEffect(() => {
     if (game.isGameOver()) {
@@ -188,13 +231,11 @@ export default function AiPlayPage() {
       return;
     }
 
-    // AI move logic
     if (game.turn() === playerColor) {
       return;
     }
 
     setIsAiThinking(true);
-    // Realistic "thinking" delay for the AI
     const timer = setTimeout(() => {
       const gameCopy = new Chess(game.fen());
       const aiMove = getAiMove(gameCopy, aiLevel);
@@ -236,6 +277,9 @@ export default function AiPlayPage() {
           isAiMode={true} 
           aiDifficulty={aiLevel}
           onDifficultyChange={handleDifficultyChange}
+          onUndo={handleUndo}
+          undoCount={undoCount}
+          maxUndos={MAX_UNDOS}
         />
       </div>
     </div>
