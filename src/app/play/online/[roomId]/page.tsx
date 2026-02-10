@@ -12,7 +12,6 @@ import { GameControls } from '@/components/game/GameControls';
 import { AdBanner } from '@/components/game/AdBanner';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSound } from '@/contexts/SoundContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 
@@ -32,7 +31,6 @@ export default function OnlinePlayPage() {
   const [gameOver, setGameOver] = useState<string | null>(null);
   
   const { toast } = useToast();
-  const { playSound } = useSound();
 
   const playerSessionId = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -114,28 +112,14 @@ export default function OnlinePlayPage() {
         if (doc.exists()) {
           const data = doc.data();
           const newGame = new Chess(data.fen);
-          const currentFen = game.fen();
           setGameDoc(data);
           setGame(newGame);
-
-          if (data.status === 'playing' && status !== 'playing' && data.players.black) {
-             playSound('win'); // Or a "player joined" sound
-          }
-
-          if (currentFen !== data.fen && !newGame.isGameOver()) {
-            const tempGame = new Chess(data.fen);
-            const lastMove = tempGame.history({ verbose: true }).slice(-1)[0];
-            if (lastMove?.flags.includes('c')) playSound('capture');
-            else playSound('move');
-          }
           
           if (newGame.isGameOver()) {
             if (!gameOver) {
               if (newGame.isCheckmate()) {
-                playSound('win');
                 setGameOver(newGame.turn() === 'b' ? 'white_win' : 'black_win');
               } else {
-                playSound('draw');
                 setGameOver('draw');
               }
             }
@@ -167,7 +151,7 @@ export default function OnlinePlayPage() {
         unsubscribe();
       }
     };
-  }, [roomId, playerSessionId, searchParams, playSound]);
+  }, [roomId, playerSessionId, searchParams]);
 
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
@@ -189,10 +173,8 @@ export default function OnlinePlayPage() {
 
     if (isGameOver) {
       if (gameCopy.isCheckmate()) {
-        playSound('win');
         setGameOver(gameCopy.turn() === 'b' ? 'white_win' : 'black_win');
       } else {
-        playSound('draw');
         setGameOver('draw');
       }
     }
@@ -209,7 +191,7 @@ export default function OnlinePlayPage() {
     });
   
     return true;
-  }, [game, myColor, roomId, status, toast, gameOver, playSound]);
+  }, [game, myColor, roomId, status, toast, gameOver]);
 
   const resetGame = async () => {
     if (myColor !== 'w') {
