@@ -160,18 +160,18 @@ export default function AiPlayPage() {
     
     if (result) {
       setGame(tempGame);
-      updateUndoState(tempGame); // Check if undo is possible after player's move.
       if (result.flags.includes('c')) {
         playSound('capture');
       } else {
         playSound('move');
       }
+      // Defer undo state update until after AI move.
       return true;
     }
 
     toast({ variant: "destructive", title: "Invalid Move" });
     return false;
-  }, [game, playerColor, toast, playSound, gameOver, isAiThinking, updateUndoState]);
+  }, [game, playerColor, toast, playSound, gameOver, isAiThinking]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
@@ -241,7 +241,7 @@ export default function AiPlayPage() {
     setGameOver(null);
     updateUndoState(gameWithHistory);
     playSound('move');
-
+    // The isUndoing flag will be reset by the useEffect below
   }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible, updateUndoState, isUndoing]);
   
   useEffect(() => {
@@ -269,6 +269,8 @@ export default function AiPlayPage() {
     }
 
     if (game.turn() === playerColor) {
+      // It's player's turn, so update undo state here after all moves (player + AI) are done.
+      updateUndoState(game);
       return;
     }
 
@@ -280,7 +282,6 @@ export default function AiPlayPage() {
       if (aiMove) {
         const result = gameCopy.move(aiMove);
         setGame(gameCopy);
-        updateUndoState(gameCopy); // IMPORTANT: Update undo state after AI moves
         if (result && result.flags.includes('c')) {
           playSound('capture');
         } else {

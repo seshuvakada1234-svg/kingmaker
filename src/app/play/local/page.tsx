@@ -56,19 +56,12 @@ export default function LocalPlayPage() {
   const handleUndo = useCallback(() => {
     if (gameOver || !isUndoPossible) return;
     
-    const pgn = game.pgn();
-    const gameWithHistory = new Chess();
-    if (pgn) {
-      gameWithHistory.loadPgn(pgn);
-    } else {
-      return;
-    }
+    const tempGame = new Chess(game.fen());
+    tempGame.undo();
     
-    gameWithHistory.undo(); // Revert the last move
-    
-    setGame(gameWithHistory);
+    setGame(tempGame);
     setGameOver(null);
-    updateUndoState(gameWithHistory);
+    updateUndoState(tempGame);
     playSound('move');
   }, [game, gameOver, isUndoPossible, playSound, updateUndoState]);
 
