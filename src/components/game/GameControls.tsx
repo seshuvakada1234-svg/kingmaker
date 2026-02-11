@@ -43,7 +43,7 @@ export function GameControls({
     }
   };
 
-  const showUndoButton = onUndo || isOnlineMode;
+  const showUndoButton = !!onUndo;
   const isUndoButtonDisabled = isOnlineMode || !isUndoPossible;
 
   return (
@@ -85,13 +85,11 @@ export function GameControls({
               <Undo2 className="mr-2 h-4 w-4" /> Undo Move
             </Button>
             
-            {isOnlineMode && (
+            {isOnlineMode ? (
               <p className="text-xs text-muted-foreground text-center">Not available in online matches.</p>
-            )}
-            
-            {!isOnlineMode && !isUndoPossible && (
+            ) : !isUndoPossible ? (
               <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
-            )}
+            ) : null}
           </div>
         )}
         

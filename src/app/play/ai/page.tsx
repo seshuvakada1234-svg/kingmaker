@@ -148,7 +148,7 @@ export default function AiPlayPage() {
   const updateUndoState = useCallback((currentGame: Chess) => {
     // In AI mode, we undo both player and AI move, so we need at least 2 moves in history.
     setIsUndoPossible(currentGame.history().length >= 2);
-  }, [setIsUndoPossible]);
+  }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
@@ -158,7 +158,7 @@ export default function AiPlayPage() {
     
     if (result) {
       setGame(tempGame);
-      // Don't update undo state here. It will be updated after the AI moves.
+      // Undo state will be updated after the AI moves.
       if (result.flags.includes('c')) {
         playSound('capture');
       } else {
@@ -198,7 +198,10 @@ export default function AiPlayPage() {
     setGameOver(null);
     updateUndoState(gameCopy);
     playSound('move');
-    setIsUndoing(false);
+    
+    // This is crucial to prevent the AI from moving again immediately.
+    // We set it back to false in a timeout to allow React to process the state update.
+    setTimeout(() => setIsUndoing(false), 0);
   }, [game, gameOver, isAiThinking, isUndoPossible, playSound, updateUndoState, isUndoing]);
   
   useEffect(() => {
@@ -221,9 +224,9 @@ export default function AiPlayPage() {
         setGameOver(null);
     }
 
+    // It's player's turn, so update undo state here after all moves (player + AI) are done.
+    updateUndoState(currentGame);
     if (currentGame.turn() === playerColor) {
-      // It's player's turn, so update undo state here after all moves (player + AI) are done.
-      updateUndoState(currentGame);
       return;
     }
 
