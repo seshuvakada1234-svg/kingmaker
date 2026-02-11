@@ -1,7 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RotateCcw, Volume2, VolumeX, Undo2 } from 'lucide-react';
+import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -20,8 +20,6 @@ interface GameControlsProps {
   onDifficultyChange?: (difficulty: string) => void;
   isOnlineMode?: boolean;
   roomCode?: string;
-  onUndo?: () => void;
-  isUndoPossible?: boolean;
 }
 
 export function GameControls({
@@ -31,8 +29,6 @@ export function GameControls({
   onDifficultyChange,
   isOnlineMode,
   roomCode,
-  onUndo,
-  isUndoPossible,
 }: GameControlsProps) {
   const { isSoundEnabled, toggleSound } = useSound();
 
@@ -42,9 +38,6 @@ export function GameControls({
       // Optional: show a toast notification
     }
   };
-
-  const showUndoButton = !!onUndo;
-  const isUndoButtonDisabled = isOnlineMode || !isUndoPossible;
 
   return (
     <Card>
@@ -73,28 +66,9 @@ export function GameControls({
             </Select>
           </div>
         )}
-
-        {showUndoButton && (
-          <div className="space-y-2 pt-4 border-t">
-            <Button 
-              onClick={onUndo} 
-              className="w-full" 
-              variant="outline" 
-              disabled={isUndoButtonDisabled}
-            >
-              <Undo2 className="mr-2 h-4 w-4" /> Undo Move
-            </Button>
-            
-            {isOnlineMode ? (
-              <p className="text-xs text-muted-foreground text-center">Not available in online matches.</p>
-            ) : !isUndoPossible ? (
-              <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
-            ) : null}
-          </div>
-        )}
         
         {isOnlineMode && roomCode && (
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-2 pt-4 border-t">
             <p className="text-sm text-muted-foreground">Room Code:</p>
             <Button variant="outline" onClick={handleCopyRoomCode} className="w-full font-mono text-lg tracking-widest">
               {roomCode}

@@ -8,6 +8,8 @@ import { GameControls } from '@/components/game/GameControls';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
+import { Button } from '@/components/ui/button';
+import { Undo2 } from 'lucide-react';
 
 /**
  * Determines the AI's next move based on the current game state and difficulty level.
@@ -265,6 +267,19 @@ export default function AiPlayPage() {
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
+        <div className="space-y-2 mb-4">
+          <Button 
+            onClick={handleUndo} 
+            className="w-full" 
+            variant="outline" 
+            disabled={!isUndoPossible}
+          >
+            <Undo2 className="mr-2 h-4 w-4" /> Undo Move
+          </Button>
+          {!isUndoPossible && (
+            <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
+          )}
+        </div>
         <MoveHistory game={game} />
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center gap-4">
@@ -282,8 +297,6 @@ export default function AiPlayPage() {
           isAiMode={true} 
           aiDifficulty={aiLevel}
           onDifficultyChange={handleDifficultyChange}
-          onUndo={handleUndo}
-          isUndoPossible={isUndoPossible}
         />
       </div>
     </div>
