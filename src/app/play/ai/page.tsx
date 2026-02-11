@@ -144,9 +144,11 @@ export default function AiPlayPage() {
   const { toast } = useToast();
   const { playSound } = useSound();
   const MAX_UNDOS = 10;
+  const [isUndoPossible, setIsUndoPossible] = useState(false);
 
-  // Correctly derive undo possibility on every render based on game history.
-  const isUndoPossible = game.history().length >= 2;
+  useEffect(() => {
+    setIsUndoPossible(game.history().length >= 2);
+  }, [game]);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
