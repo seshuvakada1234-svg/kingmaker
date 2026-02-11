@@ -147,29 +147,30 @@ export default function AiPlayPage() {
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
   const updateUndoState = useCallback((currentGame: Chess) => {
+    // In AI mode, we undo both player and AI move, so we need at least 2 moves in history.
     setIsUndoPossible(currentGame.history().length >= 2);
   }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
-    try {
-      const tempGame = new Chess(game.fen());
-      const result = tempGame.move(move);
-      if (result) {
-        setGame(tempGame);
-        if (result.flags.includes('c')) {
-          playSound('capture');
-        } else {
-          playSound('move');
-        }
-        return true;
+    
+    const tempGame = new Chess(game.fen());
+    const result = tempGame.move(move);
+    
+    if (result) {
+      setGame(tempGame);
+      updateUndoState(tempGame); // Check if undo is possible after player's move.
+      if (result.flags.includes('c')) {
+        playSound('capture');
+      } else {
+        playSound('move');
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Invalid Move" });
-      return false;
+      return true;
     }
+
+    toast({ variant: "destructive", title: "Invalid Move" });
     return false;
-  }, [game, playerColor, toast, playSound, gameOver, isAiThinking]);
+  }, [game, playerColor, toast, playSound, gameOver, isAiThinking, updateUndoState]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
@@ -192,11 +193,10 @@ export default function AiPlayPage() {
       return;
     };
 
-    // Show ad only for the 2nd undo onwards.
     if (undoCount >= 1) {
       toast({
         title: "Unlock Undo with an Ad",
-        description: "Watch a short ad to continue undoing moves.",
+        description: "Watching ad to unlock Undo…",
       });
 
       await new Promise<void>((resolve) => {
@@ -220,14 +220,22 @@ export default function AiPlayPage() {
       });
     }
 
-    const gameCopy = new Chess(game.fen());
-    gameCopy.undo(); // Undo AI's move
-    gameCopy.undo(); // Undo player's move
+    const pgn = game.pgn();
+    const gameWithHistory = new Chess();
+    if (pgn) {
+      gameWithHistory.loadPgn(pgn);
+    } else {
+      // This case should not be reachable if isUndoPossible is true
+      return;
+    }
     
-    setGame(gameCopy);
+    gameWithHistory.undo(); // Undo AI's move
+    gameWithHistory.undo(); // Undo player's move
+    
+    setGame(gameWithHistory);
     setUndoCount(prev => prev + 1);
-    setGameOver(null); // Game is no longer over after an undo
-    updateUndoState(gameCopy);
+    setGameOver(null);
+    updateUndoState(gameWithHistory);
     playSound('move');
 
   }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible, updateUndoState]);
@@ -245,7 +253,6 @@ export default function AiPlayPage() {
       }
       return;
     } else if (gameOver) {
-        // Clear stale game over state if game is no longer over (e.g. after undo)
         setGameOver(null);
     }
 
@@ -261,7 +268,7 @@ export default function AiPlayPage() {
       if (aiMove) {
         const result = gameCopy.move(aiMove);
         setGame(gameCopy);
-        updateUndoState(gameCopy);
+        updateUndoState(gameCopy); // IMPORTANT: Update undo state after AI moves
         if (result && result.flags.includes('c')) {
           playSound('capture');
         } else {

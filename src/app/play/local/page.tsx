@@ -17,32 +17,32 @@ export default function LocalPlayPage() {
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
   const updateUndoState = useCallback((currentGame: Chess) => {
+    // In local mode, we only need one move in history to undo.
     setIsUndoPossible(currentGame.history().length >= 1);
   }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver) return false;
-    try {
-      const tempGame = new Chess(game.fen());
-      const result = tempGame.move(move);
-      if (result) {
-        setGame(tempGame);
-        updateUndoState(tempGame);
-        if (result.flags.includes('c')) {
-          playSound('capture');
-        } else {
-          playSound('move');
-        }
-        return true;
+    
+    const tempGame = new Chess(game.fen());
+    const result = tempGame.move(move);
+
+    if (result) {
+      setGame(tempGame);
+      updateUndoState(tempGame);
+      if (result.flags.includes('c')) {
+        playSound('capture');
+      } else {
+        playSound('move');
       }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Move",
-        description: "That move is not allowed.",
-      });
-      return false;
+      return true;
     }
+
+    toast({
+      variant: "destructive",
+      title: "Invalid Move",
+      description: "That move is not allowed.",
+    });
     return false;
   }, [game, toast, playSound, gameOver, updateUndoState]);
 
@@ -56,12 +56,19 @@ export default function LocalPlayPage() {
   const handleUndo = useCallback(() => {
     if (gameOver || !isUndoPossible) return;
     
-    const gameCopy = new Chess(game.fen());
-    gameCopy.undo(); // Revert the last move
+    const pgn = game.pgn();
+    const gameWithHistory = new Chess();
+    if (pgn) {
+      gameWithHistory.loadPgn(pgn);
+    } else {
+      return;
+    }
     
-    setGame(gameCopy);
-    setGameOver(null); // Game is no longer over after an undo
-    updateUndoState(gameCopy);
+    gameWithHistory.undo(); // Revert the last move
+    
+    setGame(gameWithHistory);
+    setGameOver(null);
+    updateUndoState(gameWithHistory);
     playSound('move');
   }, [game, gameOver, isUndoPossible, playSound, updateUndoState]);
 
@@ -77,7 +84,6 @@ export default function LocalPlayPage() {
         }
       }
     } else if (gameOver) {
-        // Clear stale game over state if game is no longer over (e.g. after undo)
         setGameOver(null);
     }
   }, [game, playSound, gameOver]);
