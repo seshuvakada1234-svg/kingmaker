@@ -20,7 +20,7 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="text-primary"/>
-              Play a Friend
+              Play with Friends
             </CardTitle>
             <CardDescription>Challenge a friend on the same device. The classic way to play.</CardDescription>
           </CardHeader>
@@ -35,7 +35,7 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="text-primary"/>
-              Play the AI
+              Play with AI
             </CardTitle>
             <CardDescription>Test your skills against our AI opponent. Choose your difficulty.</CardDescription>
           </CardHeader>
@@ -50,7 +50,7 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="text-primary"/>
-              Play Online
+              Join a Room
             </CardTitle>
             <CardDescription>Create a room or challenge a friend anywhere in the world.</CardDescription>
           </CardHeader>
