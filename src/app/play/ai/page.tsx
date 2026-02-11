@@ -141,10 +141,8 @@ export default function AiPlayPage() {
   const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
-  const [undoCount, setUndoCount] = useState(0);
   const { toast } = useToast();
   const { playSound } = useSound();
-  const MAX_UNDOS = 10;
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
   const updateUndoState = useCallback((currentGame: Chess) => {
@@ -177,7 +175,6 @@ export default function AiPlayPage() {
     const newGame = new Chess();
     setGame(newGame);
     setGameOver(null);
-    setUndoCount(0);
     updateUndoState(newGame);
   }, [updateUndoState]);
   
@@ -186,43 +183,10 @@ export default function AiPlayPage() {
     resetGame();
   }
   
-  const handleUndo = useCallback(async () => {
+  const handleUndo = useCallback(() => {
     if (gameOver || !isUndoPossible || isAiThinking || isUndoing) return;
 
     setIsUndoing(true);
-
-    if (undoCount >= MAX_UNDOS) {
-      toast({ title: "Undo limit reached", variant: "destructive" });
-      setIsUndoing(false);
-      return;
-    };
-
-    if (undoCount >= 1) {
-      toast({
-        title: "Unlock Undo with an Ad",
-        description: "Watching ad to unlock Undo…",
-      });
-
-      await new Promise<void>((resolve) => {
-        const ads = (window as any).google?.ads;
-        
-        if (ads) {
-          setTimeout(() => {
-             toast({ title: "Ad Complete!", description: "Undo granted." });
-             resolve();
-          }, 1500);
-        } else {
-          console.warn("Rewarded ad not available. Simulating ad for development.");
-          setTimeout(() => {
-            toast({
-              title: "Ad Complete!",
-              description: "Undo granted.",
-            });
-            resolve();
-          }, 1500);
-        }
-      });
-    }
 
     const gameCopy = new Chess(game.fen());
     
@@ -231,12 +195,11 @@ export default function AiPlayPage() {
     gameCopy.undo(); 
     
     setGame(gameCopy);
-    setUndoCount(prev => prev + 1);
     setGameOver(null);
     updateUndoState(gameCopy);
     playSound('move');
     setIsUndoing(false);
-  }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible, updateUndoState, isUndoing]);
+  }, [game, gameOver, isAiThinking, isUndoPossible, playSound, updateUndoState, isUndoing]);
   
   useEffect(() => {
     if (isUndoing) return;
@@ -309,8 +272,6 @@ export default function AiPlayPage() {
           onDifficultyChange={handleDifficultyChange}
           onUndo={handleUndo}
           isUndoPossible={isUndoPossible}
-          undoCount={undoCount}
-          maxUndos={MAX_UNDOS}
         />
       </div>
     </div>
