@@ -24,7 +24,8 @@ export default function LocalPlayPage() {
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver) return false;
     
-    const tempGame = new Chess(game.fen());
+    const tempGame = new Chess();
+    tempGame.loadPgn(game.pgn());
     const result = tempGame.move(move);
 
     if (result) {
@@ -56,7 +57,8 @@ export default function LocalPlayPage() {
   const handleUndo = useCallback(() => {
     if (gameOver || !isUndoPossible) return;
     
-    const tempGame = new Chess(game.fen());
+    const tempGame = new Chess();
+    tempGame.loadPgn(game.pgn());
     tempGame.undo();
     
     setGame(tempGame);

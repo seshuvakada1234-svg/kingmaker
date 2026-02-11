@@ -75,7 +75,8 @@ const getAiMove = (game: Chess, level: number): Move | null => {
     let bestValue = isWhiteTurn ? -Infinity : Infinity;
 
     for (const move of moves) {
-      const gameCopy = new Chess(game.fen());
+      const gameCopy = new Chess();
+      gameCopy.loadPgn(game.pgn());
       gameCopy.move(move);
       
       // If this move is checkmate, it's the best one.
@@ -104,7 +105,8 @@ const getAiMove = (game: Chess, level: number): Move | null => {
   if (level <= 10) {
       const moveEvaluations: {move: Move, score: number}[] = [];
       for (const move of moves) {
-        const gameCopy = new Chess(game.fen());
+        const gameCopy = new Chess();
+        gameCopy.loadPgn(game.pgn());
         gameCopy.move(move);
 
         if (gameCopy.isCheckmate()) {
@@ -153,7 +155,9 @@ export default function AiPlayPage() {
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
     
-    const tempGame = new Chess(game.fen());
+    // Create a new game instance from the PGN to preserve history
+    const tempGame = new Chess();
+    tempGame.loadPgn(game.pgn());
     const result = tempGame.move(move);
     
     if (result) {
@@ -185,29 +189,31 @@ export default function AiPlayPage() {
   
   const handleUndo = useCallback(() => {
     if (gameOver || !isUndoPossible || isAiThinking || isUndoing) return;
-
+  
     setIsUndoing(true);
-
-    const gameCopy = new Chess(game.fen());
-    
+  
+    // Create a new game instance from PGN to correctly handle history
+    const gameCopy = new Chess();
+    gameCopy.loadPgn(game.pgn());
+  
     // In AI mode, undo both the AI's move and the player's move.
-    gameCopy.undo(); 
-    gameCopy.undo(); 
-    
+    gameCopy.undo();
+    gameCopy.undo();
+  
     setGame(gameCopy);
     setGameOver(null);
     updateUndoState(gameCopy);
     playSound('move');
-    
+  
     // This is crucial to prevent the AI from moving again immediately.
-    // We set it back to false in a timeout to allow React to process the state update.
     setTimeout(() => setIsUndoing(false), 0);
   }, [game, gameOver, isAiThinking, isUndoPossible, playSound, updateUndoState, isUndoing]);
   
   useEffect(() => {
     if (isUndoing) return;
 
-    const currentGame = new Chess(game.fen());
+    const currentGame = new Chess();
+    currentGame.loadPgn(game.pgn());
 
     if (currentGame.isGameOver()) {
       if (!gameOver) {
@@ -224,7 +230,6 @@ export default function AiPlayPage() {
         setGameOver(null);
     }
 
-    // It's player's turn, so update undo state here after all moves (player + AI) are done.
     updateUndoState(currentGame);
     if (currentGame.turn() === playerColor) {
       return;
@@ -232,13 +237,14 @@ export default function AiPlayPage() {
 
     setIsAiThinking(true);
     const timer = setTimeout(() => {
-      const gameCopy = new Chess(game.fen());
+      const gameCopy = new Chess();
+      gameCopy.loadPgn(game.pgn());
       const aiMove = getAiMove(gameCopy, aiLevel);
       
       if (aiMove) {
         const result = gameCopy.move(aiMove);
         setGame(gameCopy);
-        updateUndoState(gameCopy); // This is the crucial update
+        updateUndoState(gameCopy);
         if (result && result.flags.includes('c')) {
           playSound('capture');
         } else {
