@@ -145,6 +145,7 @@ export default function AiPlayPage() {
   const { playSound } = useSound();
   const MAX_UNDOS = 10;
 
+  // An undo is possible if at least one full turn (player + AI) has passed.
   const isUndoPossible = game.history().length >= 2;
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
@@ -182,15 +183,10 @@ export default function AiPlayPage() {
   const handleUndo = useCallback(async () => {
     if (gameOver || !isUndoPossible || isAiThinking) return;
 
-    if (undoCount >= MAX_UNDOS) {
-      toast({
-        variant: "destructive",
-        title: "Undo limit reached",
-        description: "You have used all your undos for this match.",
-      });
-      return;
-    }
+    // The button will be disabled if the limit is reached, so this is a backup.
+    if (undoCount >= MAX_UNDOS) return;
 
+    // Show ad only for the 2nd undo onwards.
     if (undoCount >= 1) {
       toast({
         title: "Unlock Undo with an Ad",
@@ -231,7 +227,7 @@ export default function AiPlayPage() {
     setUndoCount(prev => prev + 1);
     playSound('move');
 
-  }, [game, gameOver, playerColor, isAiThinking, undoCount, toast, playSound, isUndoPossible]);
+  }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible]);
 
   useEffect(() => {
     if (game.isGameOver()) {

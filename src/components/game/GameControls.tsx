@@ -46,18 +46,20 @@ export function GameControls({
       // Optional: show a toast notification
     }
   };
-  
-  const isUndoDisabled = undoCount >= maxUndos || !isUndoPossible;
 
-  const getUndoHelperText = () => {
+  const getAiUndoHelperText = () => {
     if (undoCount >= maxUndos) {
       return <p className="text-xs text-destructive text-center font-semibold">Undo limit reached</p>;
     }
+    // For AI mode, isUndoPossible is based on history.length >= 2
     if (!isUndoPossible) {
       return <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo</p>;
     }
     return <p className="text-xs text-muted-foreground text-center">1 free undo • Next undos require ad</p>;
   }
+
+  const showUndoButton = onUndo || isOnlineMode;
+  const isUndoButtonDisabled = isOnlineMode || !isUndoPossible || (isAiMode && undoCount >= maxUndos);
 
   return (
     <Card>
@@ -87,15 +89,36 @@ export function GameControls({
           </div>
         )}
 
-        {isAiMode && onUndo && (
+        {showUndoButton && (
           <div className="space-y-2 pt-4 border-t">
-            <Button onClick={onUndo} className="w-full" variant="outline" disabled={isUndoDisabled}>
+            <Button 
+              onClick={onUndo} 
+              className="w-full" 
+              variant="outline" 
+              disabled={isUndoButtonDisabled}
+            >
               <Undo2 className="mr-2 h-4 w-4" /> Undo Move
             </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Undos used: {undoCount} / {maxUndos}
-            </p>
-            {getUndoHelperText()}
+
+            {/* AI Mode Helper Texts */}
+            {isAiMode && (
+              <>
+                <p className="text-xs text-muted-foreground text-center">
+                  Undos used: {undoCount} / {maxUndos}
+                </p>
+                {getAiUndoHelperText()}
+              </>
+            )}
+
+            {/* Online Mode Helper Text */}
+            {isOnlineMode && (
+              <p className="text-xs text-muted-foreground text-center">Not available in online matches.</p>
+            )}
+            
+            {/* Local Mode Helper Text */}
+            {!isAiMode && !isOnlineMode && !isUndoPossible && (
+              <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
+            )}
           </div>
         )}
         

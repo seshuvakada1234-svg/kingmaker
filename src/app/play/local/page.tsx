@@ -15,6 +15,8 @@ export default function LocalPlayPage() {
   const { toast } = useToast();
   const { playSound } = useSound();
 
+  const isUndoPossible = game.history().length > 0;
+
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver) return false;
     try {
@@ -45,6 +47,16 @@ export default function LocalPlayPage() {
     setGameOver(null);
   }
 
+  const handleUndo = useCallback(() => {
+    if (gameOver || !isUndoPossible) return;
+    
+    const gameCopy = new Chess(game.fen());
+    gameCopy.undo(); // Revert the last move
+    
+    setGame(gameCopy);
+    playSound('move');
+  }, [game, gameOver, isUndoPossible, playSound]);
+
   useEffect(() => {
     if (game.isGameOver()) {
       if (game.isCheckmate()) {
@@ -72,7 +84,7 @@ export default function LocalPlayPage() {
         />
       </div>
       <div className="w-full lg:w-64 order-3">
-        <GameControls onReset={resetGame} />
+        <GameControls onReset={resetGame} onUndo={handleUndo} isUndoPossible={isUndoPossible} />
       </div>
     </div>
   );
