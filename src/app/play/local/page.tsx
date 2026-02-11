@@ -16,9 +16,9 @@ export default function LocalPlayPage() {
   const { playSound } = useSound();
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
-  useEffect(() => {
-    setIsUndoPossible(game.history().length > 0);
-  }, [game]);
+  const updateUndoState = useCallback((currentGame: Chess) => {
+    setIsUndoPossible(currentGame.history().length >= 1);
+  }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver) return false;
@@ -27,6 +27,7 @@ export default function LocalPlayPage() {
       const result = tempGame.move(move);
       if (result) {
         setGame(tempGame);
+        updateUndoState(tempGame);
         if (result.flags.includes('c')) {
           playSound('capture');
         } else {
@@ -43,12 +44,14 @@ export default function LocalPlayPage() {
       return false;
     }
     return false;
-  }, [game, toast, playSound, gameOver]);
+  }, [game, toast, playSound, gameOver, updateUndoState]);
 
-  const resetGame = () => {
-    setGame(new Chess());
+  const resetGame = useCallback(() => {
+    const newGame = new Chess();
+    setGame(newGame);
     setGameOver(null);
-  }
+    updateUndoState(newGame);
+  }, [updateUndoState]);
 
   const handleUndo = useCallback(() => {
     if (gameOver || !isUndoPossible) return;
@@ -58,8 +61,9 @@ export default function LocalPlayPage() {
     
     setGame(gameCopy);
     setGameOver(null); // Game is no longer over after an undo
+    updateUndoState(gameCopy);
     playSound('move');
-  }, [game, gameOver, isUndoPossible, playSound]);
+  }, [game, gameOver, isUndoPossible, playSound, updateUndoState]);
 
   useEffect(() => {
     if (game.isGameOver()) {

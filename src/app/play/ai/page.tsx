@@ -146,9 +146,9 @@ export default function AiPlayPage() {
   const MAX_UNDOS = 10;
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
-  useEffect(() => {
-    setIsUndoPossible(game.history().length >= 2);
-  }, [game]);
+  const updateUndoState = useCallback((currentGame: Chess) => {
+    setIsUndoPossible(currentGame.history().length >= 2);
+  }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
@@ -172,10 +172,12 @@ export default function AiPlayPage() {
   }, [game, playerColor, toast, playSound, gameOver, isAiThinking]);
 
   const resetGame = useCallback(() => {
-    setGame(new Chess());
+    const newGame = new Chess();
+    setGame(newGame);
     setGameOver(null);
     setUndoCount(0);
-  }, []);
+    updateUndoState(newGame);
+  }, [updateUndoState]);
   
   const handleDifficultyChange = (newLevel: string) => {
     setAiLevel(parseInt(newLevel, 10));
@@ -225,9 +227,10 @@ export default function AiPlayPage() {
     setGame(gameCopy);
     setUndoCount(prev => prev + 1);
     setGameOver(null); // Game is no longer over after an undo
+    updateUndoState(gameCopy);
     playSound('move');
 
-  }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible]);
+  }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible, updateUndoState]);
 
   useEffect(() => {
     if (game.isGameOver()) {
@@ -258,6 +261,7 @@ export default function AiPlayPage() {
       if (aiMove) {
         const result = gameCopy.move(aiMove);
         setGame(gameCopy);
+        updateUndoState(gameCopy);
         if (result && result.flags.includes('c')) {
           playSound('capture');
         } else {
@@ -269,7 +273,7 @@ export default function AiPlayPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, aiLevel, playSound, gameOver]);
+  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState]);
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
