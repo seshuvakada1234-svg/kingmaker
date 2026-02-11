@@ -17,8 +17,8 @@ export default function LocalPlayPage() {
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
   const updateUndoState = useCallback((currentGame: Chess) => {
-    // In local mode, we only need one move in history to undo.
-    setIsUndoPossible(currentGame.history().length >= 1);
+    // In local mode, we only need one move in history to undo, and the game must not be over.
+    setIsUndoPossible(currentGame.history().length >= 1 && !currentGame.isGameOver());
   }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {

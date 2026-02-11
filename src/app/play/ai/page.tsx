@@ -149,7 +149,8 @@ export default function AiPlayPage() {
 
   const updateUndoState = useCallback((currentGame: Chess) => {
     // In AI mode, we undo both player and AI move, so we need at least 2 moves in history.
-    setIsUndoPossible(currentGame.history().length >= 2);
+    // The game must also not be over.
+    setIsUndoPossible(currentGame.history().length >= 2 && !currentGame.isGameOver());
   }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
@@ -215,6 +216,9 @@ export default function AiPlayPage() {
     const currentGame = new Chess();
     currentGame.loadPgn(game.pgn());
 
+    // Always update the undo state first based on the current game object.
+    updateUndoState(currentGame);
+
     if (currentGame.isGameOver()) {
       if (!gameOver) {
         if (currentGame.isCheckmate()) {
@@ -225,16 +229,16 @@ export default function AiPlayPage() {
           setGameOver('draw');
         }
       }
-      return;
+      return; // Game is over, no more logic to run. Undo state is already updated.
     } else if (gameOver) {
         setGameOver(null);
     }
 
-    updateUndoState(currentGame);
     if (currentGame.turn() === playerColor) {
-      return;
+      return; // It's player's turn, do nothing.
     }
 
+    // It's AI's turn.
     setIsAiThinking(true);
     const timer = setTimeout(() => {
       const gameCopy = new Chess();
@@ -243,8 +247,7 @@ export default function AiPlayPage() {
       
       if (aiMove) {
         const result = gameCopy.move(aiMove);
-        setGame(gameCopy);
-        updateUndoState(gameCopy);
+        setGame(gameCopy); // This will trigger useEffect again.
         if (result && result.flags.includes('c')) {
           playSound('capture');
         } else {
