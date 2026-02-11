@@ -61,10 +61,10 @@ export default function LocalPlayPage() {
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
-        <GameStatus game={game} />
         <MoveHistory game={game} />
       </div>
-      <div className="order-1 lg:order-2 w-full lg:flex-1 flex justify-center">
+      <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center gap-4">
+        <GameStatus game={game} />
         <Chessboard 
           game={game} 
           onMove={handleMove as (move: any) => boolean} 

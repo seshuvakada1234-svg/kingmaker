@@ -252,11 +252,11 @@ export default function OnlinePlayPage() {
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
-        <GameStatus game={game} isThinking={status === 'playing' && !isMyTurn} />
         <MoveHistory game={game} />
         {myColor && <p className="text-center text-sm mt-2 text-muted-foreground">You are playing as {orientation}.</p>}
       </div>
-      <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center">
+      <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center gap-4">
+        <GameStatus game={game} isThinking={status === 'playing' && !isMyTurn} />
         <Chessboard
           game={game}
           onMove={handleMove}
