@@ -145,11 +145,11 @@ export default function AiPlayPage() {
   const { playSound } = useSound();
   const MAX_UNDOS = 10;
 
-  // An undo is possible if at least one full turn (player + AI) has passed.
+  // Correctly derive undo possibility on every render based on game history.
   const isUndoPossible = game.history().length >= 2;
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (gameOver || game.turn() !== playerColor) return false;
+    if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
     try {
       const tempGame = new Chess(game.fen());
       const result = tempGame.move(move);
@@ -167,7 +167,7 @@ export default function AiPlayPage() {
       return false;
     }
     return false;
-  }, [game, playerColor, toast, playSound, gameOver]);
+  }, [game, playerColor, toast, playSound, gameOver, isAiThinking]);
 
   const resetGame = useCallback(() => {
     setGame(new Chess());
@@ -183,8 +183,10 @@ export default function AiPlayPage() {
   const handleUndo = useCallback(async () => {
     if (gameOver || !isUndoPossible || isAiThinking) return;
 
-    // The button will be disabled if the limit is reached, so this is a backup.
-    if (undoCount >= MAX_UNDOS) return;
+    if (undoCount >= MAX_UNDOS) {
+      toast({ title: "Undo limit reached", variant: "destructive" });
+      return;
+    };
 
     // Show ad only for the 2nd undo onwards.
     if (undoCount >= 1) {
@@ -194,19 +196,14 @@ export default function AiPlayPage() {
       });
 
       await new Promise<void>((resolve) => {
-        // This is a placeholder for a real ad integration.
-        // It checks for a global object you would set up with your ad provider.
         const ads = (window as any).google?.ads;
         
         if (ads) {
-          // If a real ad SDK is present, you would call it here.
-          // For now, we simulate success and resolve after a delay.
           setTimeout(() => {
              toast({ title: "Ad Complete!", description: "Undo granted." });
              resolve();
           }, 1500);
         } else {
-          // Fallback for local dev or if ads are blocked/unavailable.
           console.warn("Rewarded ad not available. Simulating ad for development.");
           setTimeout(() => {
             toast({
@@ -225,6 +222,7 @@ export default function AiPlayPage() {
     
     setGame(gameCopy);
     setUndoCount(prev => prev + 1);
+    setGameOver(null); // Game is no longer over after an undo
     playSound('move');
 
   }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible]);
@@ -241,6 +239,9 @@ export default function AiPlayPage() {
         }
       }
       return;
+    } else if (gameOver) {
+        // Clear stale game over state if game is no longer over (e.g. after undo)
+        setGameOver(null);
     }
 
     if (game.turn() === playerColor) {

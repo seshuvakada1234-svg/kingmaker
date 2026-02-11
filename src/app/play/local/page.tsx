@@ -15,6 +15,7 @@ export default function LocalPlayPage() {
   const { toast } = useToast();
   const { playSound } = useSound();
 
+  // Correctly derive undo possibility on every render based on game history.
   const isUndoPossible = game.history().length > 0;
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
@@ -54,20 +55,26 @@ export default function LocalPlayPage() {
     gameCopy.undo(); // Revert the last move
     
     setGame(gameCopy);
+    setGameOver(null); // Game is no longer over after an undo
     playSound('move');
   }, [game, gameOver, isUndoPossible, playSound]);
 
   useEffect(() => {
     if (game.isGameOver()) {
-      if (game.isCheckmate()) {
-        playSound('win');
-        setGameOver(game.turn() === 'b' ? 'white_win' : 'black_win');
-      } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
-        playSound('draw');
-        setGameOver('draw');
+      if (!gameOver) {
+        if (game.isCheckmate()) {
+          playSound('win');
+          setGameOver(game.turn() === 'b' ? 'white_win' : 'black_win');
+        } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
+          playSound('draw');
+          setGameOver('draw');
+        }
       }
+    } else if (gameOver) {
+        // Clear stale game over state if game is no longer over (e.g. after undo)
+        setGameOver(null);
     }
-  }, [game, playSound]);
+  }, [game, playSound, gameOver]);
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
