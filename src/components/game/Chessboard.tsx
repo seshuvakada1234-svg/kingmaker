@@ -29,7 +29,8 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const { toast } = useToast();
 
-  const history = useMemo(() => game.history({ verbose: true }), [game.fen()]);
+  const fen = game.fen();
+  const history = useMemo(() => game.history({ verbose: true }), [fen]);
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
   const possibleMoves = useMemo(() => {
@@ -68,7 +69,10 @@ export function Chessboard({ game, onMove, boardOrientation = 'white', isInterac
         // The target square is not a valid move, but it's another one of the player's pieces.
         // We switch the selection to the new piece.
         setSelectedSquare(square);
-      } else {
+      } else if (pieceOnSquare && !playerColor && pieceOnSquare.color === game.turn()) {
+        setSelectedSquare(square);
+      }
+      else {
         // The target is not a valid move and not another of the player's pieces. Deselect.
         setSelectedSquare(null);
       }

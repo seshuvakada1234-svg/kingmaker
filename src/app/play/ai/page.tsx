@@ -160,18 +160,19 @@ export default function AiPlayPage() {
     
     if (result) {
       setGame(tempGame);
+      updateUndoState(tempGame);
       if (result.flags.includes('c')) {
         playSound('capture');
       } else {
         playSound('move');
       }
-      // Defer undo state update until after AI move.
+      // Defer final undo state update until after AI move.
       return true;
     }
 
     toast({ variant: "destructive", title: "Invalid Move" });
     return false;
-  }, [game, playerColor, toast, playSound, gameOver, isAiThinking]);
+  }, [game, playerColor, toast, playSound, gameOver, isAiThinking, updateUndoState]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
@@ -224,32 +225,19 @@ export default function AiPlayPage() {
       });
     }
 
-    const pgn = game.pgn();
-    const gameWithHistory = new Chess();
-    if (pgn) {
-      gameWithHistory.loadPgn(pgn);
-    } else {
-      setIsUndoing(false);
-      return;
-    }
+    const gameCopy = new Chess(game.fen());
     
-    gameWithHistory.undo(); // Undo AI's move
-    gameWithHistory.undo(); // Undo player's move
+    gameCopy.undo(); // Undo AI's move
+    gameCopy.undo(); // Undo player's move
     
-    setGame(gameWithHistory);
+    setGame(gameCopy);
     setUndoCount(prev => prev + 1);
     setGameOver(null);
-    updateUndoState(gameWithHistory);
+    updateUndoState(gameCopy);
     playSound('move');
-    // The isUndoing flag will be reset by the useEffect below
+    setIsUndoing(false);
   }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible, updateUndoState, isUndoing]);
   
-  useEffect(() => {
-    if (isUndoing) {
-      setIsUndoing(false);
-    }
-  }, [game, isUndoing]);
-
   useEffect(() => {
     if (isUndoing) return;
 
@@ -305,7 +293,7 @@ export default function AiPlayPage() {
         <GameStatus game={game} isThinking={isAiThinking} isAiMode={true} />
         <Chessboard 
           game={game} 
-          onMove={handleMove as (move: any) => boolean} 
+          onMove={handleMove} 
           boardOrientation={playerColor === 'w' ? 'white' : 'black'}
           isInteractable={!game.isGameOver() && game.turn() === playerColor && !isAiThinking}
         />

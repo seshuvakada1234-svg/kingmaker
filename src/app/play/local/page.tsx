@@ -66,6 +66,7 @@ export default function LocalPlayPage() {
   }, [game, gameOver, isUndoPossible, playSound, updateUndoState]);
 
   useEffect(() => {
+    updateUndoState(game);
     if (game.isGameOver()) {
       if (!gameOver) {
         if (game.isCheckmate()) {
@@ -79,7 +80,7 @@ export default function LocalPlayPage() {
     } else if (gameOver) {
         setGameOver(null);
     }
-  }, [game, playSound, gameOver]);
+  }, [game, playSound, gameOver, updateUndoState]);
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
@@ -91,7 +92,7 @@ export default function LocalPlayPage() {
         <GameStatus game={game} />
         <Chessboard 
           game={game} 
-          onMove={handleMove as (move: any) => boolean} 
+          onMove={handleMove} 
           isInteractable={!game.isGameOver()} 
         />
       </div>
