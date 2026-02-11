@@ -160,19 +160,18 @@ export default function AiPlayPage() {
     
     if (result) {
       setGame(tempGame);
-      updateUndoState(tempGame);
+      // Don't update undo state here. It will be updated after the AI moves.
       if (result.flags.includes('c')) {
         playSound('capture');
       } else {
         playSound('move');
       }
-      // Defer final undo state update until after AI move.
       return true;
     }
 
     toast({ variant: "destructive", title: "Invalid Move" });
     return false;
-  }, [game, playerColor, toast, playSound, gameOver, isAiThinking, updateUndoState]);
+  }, [game, playerColor, toast, playSound, gameOver, isAiThinking]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
@@ -227,8 +226,9 @@ export default function AiPlayPage() {
 
     const gameCopy = new Chess(game.fen());
     
-    gameCopy.undo(); // Undo AI's move
-    gameCopy.undo(); // Undo player's move
+    // In AI mode, undo both the AI's move and the player's move.
+    gameCopy.undo(); 
+    gameCopy.undo(); 
     
     setGame(gameCopy);
     setUndoCount(prev => prev + 1);
@@ -272,6 +272,7 @@ export default function AiPlayPage() {
       if (aiMove) {
         const result = gameCopy.move(aiMove);
         setGame(gameCopy);
+        updateUndoState(gameCopy); // This is the crucial update
         if (result && result.flags.includes('c')) {
           playSound('capture');
         } else {
