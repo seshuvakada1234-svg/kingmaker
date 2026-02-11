@@ -140,6 +140,7 @@ export default function AiPlayPage() {
   const [playerColor] = useState<'w' | 'b'>('w');
   const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
   const [undoCount, setUndoCount] = useState(0);
   const { toast } = useToast();
   const { playSound } = useSound();
@@ -186,10 +187,13 @@ export default function AiPlayPage() {
   }
   
   const handleUndo = useCallback(async () => {
-    if (gameOver || !isUndoPossible || isAiThinking) return;
+    if (gameOver || !isUndoPossible || isAiThinking || isUndoing) return;
+
+    setIsUndoing(true);
 
     if (undoCount >= MAX_UNDOS) {
       toast({ title: "Undo limit reached", variant: "destructive" });
+      setIsUndoing(false);
       return;
     };
 
@@ -225,7 +229,7 @@ export default function AiPlayPage() {
     if (pgn) {
       gameWithHistory.loadPgn(pgn);
     } else {
-      // This case should not be reachable if isUndoPossible is true
+      setIsUndoing(false);
       return;
     }
     
@@ -238,9 +242,17 @@ export default function AiPlayPage() {
     updateUndoState(gameWithHistory);
     playSound('move');
 
-  }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible, updateUndoState]);
+  }, [game, gameOver, isAiThinking, undoCount, toast, playSound, isUndoPossible, updateUndoState, isUndoing]);
+  
+  useEffect(() => {
+    if (isUndoing) {
+      setIsUndoing(false);
+    }
+  }, [game, isUndoing]);
 
   useEffect(() => {
+    if (isUndoing) return;
+
     if (game.isGameOver()) {
       if (!gameOver) {
         if (game.isCheckmate()) {
@@ -280,7 +292,7 @@ export default function AiPlayPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState]);
+  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState, isUndoing]);
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
