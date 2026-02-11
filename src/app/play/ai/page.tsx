@@ -150,7 +150,7 @@ export default function AiPlayPage() {
   const updateUndoState = useCallback((currentGame: Chess) => {
     // In AI mode, we undo both player and AI move, so we need at least 2 moves in history.
     setIsUndoPossible(currentGame.history().length >= 2);
-  }, []);
+  }, [setIsUndoPossible]);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
     if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
@@ -241,12 +241,14 @@ export default function AiPlayPage() {
   useEffect(() => {
     if (isUndoing) return;
 
-    if (game.isGameOver()) {
+    const currentGame = new Chess(game.fen());
+
+    if (currentGame.isGameOver()) {
       if (!gameOver) {
-        if (game.isCheckmate()) {
+        if (currentGame.isCheckmate()) {
           playSound('win');
-          setGameOver(game.turn() === 'b' ? 'white_win' : 'black_win');
-        } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
+          setGameOver(currentGame.turn() === 'b' ? 'white_win' : 'black_win');
+        } else if (currentGame.isDraw() || currentGame.isStalemate() || currentGame.isThreefoldRepetition() || currentGame.isInsufficientMaterial()) {
           playSound('draw');
           setGameOver('draw');
         }
@@ -256,9 +258,9 @@ export default function AiPlayPage() {
         setGameOver(null);
     }
 
-    if (game.turn() === playerColor) {
+    if (currentGame.turn() === playerColor) {
       // It's player's turn, so update undo state here after all moves (player + AI) are done.
-      updateUndoState(game);
+      updateUndoState(currentGame);
       return;
     }
 
