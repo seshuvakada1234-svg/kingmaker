@@ -10,6 +10,8 @@ import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 import { Button } from '@/components/ui/button';
 import { Undo2, XCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 
 export default function LocalPlayPage() {
   const [game, setGame] = useState(new Chess());
@@ -112,19 +114,23 @@ export default function LocalPlayPage() {
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
-        <div className="space-y-2 mb-4">
-          <Button 
-            onClick={handleUndo} 
-            className="w-full" 
-            variant="outline" 
-            disabled={!isUndoPossible || isPreviewing}
-          >
-            <Undo2 className="mr-2 h-4 w-4" /> Undo Move
-          </Button>
-          {!isUndoPossible && !isPreviewing && (
-            <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <Button 
+              onClick={handleUndo} 
+              className="w-full" 
+              variant="outline" 
+              disabled={!isUndoPossible || isPreviewing}
+            >
+              <Undo2 className="mr-2 h-4 w-4" /> Undo Move
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {!isUndoPossible && !isPreviewing && (
+              <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
+            )}
+          </CardContent>
+        </Card>
         <MoveHistory game={game} onMoveSelect={handleMoveSelect} />
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center gap-4">

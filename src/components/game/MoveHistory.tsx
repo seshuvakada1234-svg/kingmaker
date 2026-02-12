@@ -46,9 +46,9 @@ export function MoveHistory({ game, onMoveSelect }: MoveHistoryProps) {
   };
 
   return (
-    <Card className="mt-4">
+    <Card>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between p-4">
           <CardTitle>Move History</CardTitle>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -58,7 +58,7 @@ export function MoveHistory({ game, onMoveSelect }: MoveHistoryProps) {
           </CollapsibleTrigger>
         </CardHeader>
         <CollapsibleContent>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <ScrollArea className="h-48 w-full pr-4" ref={scrollAreaRef}>
               <div className="grid grid-cols-[auto_1fr_1fr] gap-x-4 gap-y-1 font-mono text-sm">
                 {movePairs.map((pair, index) => (
