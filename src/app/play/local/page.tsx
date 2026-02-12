@@ -9,22 +9,38 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 import { Button } from '@/components/ui/button';
-import { Undo2 } from 'lucide-react';
+import { Undo2, XCircle } from 'lucide-react';
 
 export default function LocalPlayPage() {
   const [game, setGame] = useState(new Chess());
   const [gameOver, setGameOver] = useState<string | null>(null);
+  const [previewGame, setPreviewGame] = useState<Chess | null>(null);
   const { toast } = useToast();
   const { playSound } = useSound();
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
   const updateUndoState = useCallback((currentGame: Chess) => {
-    // In local mode, we only need one move in history to undo, and the game must not be over.
     setIsUndoPossible(currentGame.history().length >= 1 && !currentGame.isGameOver());
   }, []);
 
+  const handleMoveSelect = useCallback((moveIndex: number) => {
+    const fullHistory = game.history();
+    if (moveIndex < 0 || moveIndex >= fullHistory.length) return;
+
+    const tempGame = new Chess();
+    for (let i = 0; i <= moveIndex; i++) {
+      tempGame.move(fullHistory[i]);
+    }
+    setPreviewGame(tempGame);
+    playSound('move');
+  }, [game, playSound]);
+
+  const exitPreview = () => {
+    setPreviewGame(null);
+  };
+
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (gameOver) return false;
+    if (gameOver || previewGame) return false;
     
     const tempGame = new Chess();
     tempGame.loadPgn(game.pgn());
@@ -47,17 +63,18 @@ export default function LocalPlayPage() {
       description: "That move is not allowed.",
     });
     return false;
-  }, [game, toast, playSound, gameOver, updateUndoState]);
+  }, [game, toast, playSound, gameOver, updateUndoState, previewGame]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
     setGame(newGame);
     setGameOver(null);
+    setPreviewGame(null);
     updateUndoState(newGame);
   }, [updateUndoState]);
 
   const handleUndo = useCallback(() => {
-    if (gameOver || !isUndoPossible) return;
+    if (gameOver || !isUndoPossible || previewGame) return;
     
     const tempGame = new Chess();
     tempGame.loadPgn(game.pgn());
@@ -67,9 +84,11 @@ export default function LocalPlayPage() {
     setGameOver(null);
     updateUndoState(tempGame);
     playSound('move');
-  }, [game, gameOver, isUndoPossible, playSound, updateUndoState]);
+  }, [game, gameOver, isUndoPossible, playSound, updateUndoState, previewGame]);
 
   useEffect(() => {
+    if (previewGame) return;
+
     updateUndoState(game);
     if (game.isGameOver()) {
       if (!gameOver) {
@@ -84,7 +103,10 @@ export default function LocalPlayPage() {
     } else if (gameOver) {
         setGameOver(null);
     }
-  }, [game, playSound, gameOver, updateUndoState]);
+  }, [game, playSound, gameOver, updateUndoState, previewGame]);
+
+  const displayGame = previewGame || game;
+  const isPreviewing = !!previewGame;
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
@@ -95,22 +117,31 @@ export default function LocalPlayPage() {
             onClick={handleUndo} 
             className="w-full" 
             variant="outline" 
-            disabled={!isUndoPossible}
+            disabled={!isUndoPossible || isPreviewing}
           >
             <Undo2 className="mr-2 h-4 w-4" /> Undo Move
           </Button>
-          {!isUndoPossible && (
+          {!isUndoPossible && !isPreviewing && (
             <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
           )}
         </div>
-        <MoveHistory game={game} />
+        <MoveHistory game={game} onMoveSelect={handleMoveSelect} />
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center gap-4">
-        <GameStatus game={game} />
+        {isPreviewing && (
+            <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-sm font-medium text-accent">-- Preview Mode --</p>
+                <Button onClick={exitPreview} variant="outline" size="sm">
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Back to Current Game
+                </Button>
+            </div>
+        )}
+        <GameStatus game={displayGame} />
         <Chessboard 
-          game={game} 
+          game={displayGame} 
           onMove={handleMove} 
-          isInteractable={!game.isGameOver()} 
+          isInteractable={!isPreviewing && !game.isGameOver()} 
         />
       </div>
       <div className="w-full lg:w-64 order-3">

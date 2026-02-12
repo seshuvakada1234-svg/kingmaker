@@ -6,9 +6,10 @@ import React, { useMemo, useRef, useEffect } from 'react';
 
 interface MoveHistoryProps {
   game: Chess;
+  onMoveSelect?: (moveIndex: number) => void;
 }
 
-export function MoveHistory({ game }: MoveHistoryProps) {
+export function MoveHistory({ game, onMoveSelect }: MoveHistoryProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const history = useMemo(() => game.history(), [game.fen()]);
   
@@ -30,6 +31,12 @@ export function MoveHistory({ game }: MoveHistoryProps) {
     }
   }, [movePairs]);
 
+  const handleMoveClick = (moveIndex: number) => {
+    if (onMoveSelect) {
+      onMoveSelect(moveIndex);
+    }
+  };
+
   return (
     <Card className="mt-4">
       <CardHeader>
@@ -38,11 +45,23 @@ export function MoveHistory({ game }: MoveHistoryProps) {
       <CardContent>
         <ScrollArea className="h-48 w-full pr-4" ref={scrollAreaRef}>
           <div className="grid grid-cols-[auto_1fr_1fr] gap-x-4 gap-y-1 font-mono text-sm">
-            {movePairs.map(pair => (
+            {movePairs.map((pair, index) => (
               <React.Fragment key={pair.num}>
                 <div className="text-muted-foreground">{pair.num}.</div>
-                <div>{pair.white}</div>
-                <div>{pair.black}</div>
+                <div
+                  className={onMoveSelect ? 'cursor-pointer hover:underline' : ''}
+                  onClick={() => handleMoveClick(index * 2)}
+                >
+                  {pair.white}
+                </div>
+                {pair.black ? (
+                  <div
+                    className={onMoveSelect ? 'cursor-pointer hover:underline' : ''}
+                    onClick={() => handleMoveClick(index * 2 + 1)}
+                  >
+                    {pair.black}
+                  </div>
+                ) : <div />}
               </React.Fragment>
             ))}
           </div>

@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 import { Button } from '@/components/ui/button';
-import { Undo2 } from 'lucide-react';
+import { Undo2, XCircle } from 'lucide-react';
 
 /**
  * Determines the AI's next move based on the current game state and difficulty level.
@@ -141,6 +141,7 @@ const getAiMove = (game: Chess, level: number): Move | null => {
 export default function AiPlayPage() {
   const [game, setGame] = useState(new Chess());
   const [gameOver, setGameOver] = useState<string | null>(null);
+  const [previewGame, setPreviewGame] = useState<Chess | null>(null);
   const [playerColor] = useState<'w' | 'b'>('w');
   const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
@@ -149,6 +150,22 @@ export default function AiPlayPage() {
   const { playSound } = useSound();
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
+  const handleMoveSelect = useCallback((moveIndex: number) => {
+    const fullHistory = game.history();
+    if (moveIndex < 0 || moveIndex >= fullHistory.length) return;
+
+    const tempGame = new Chess();
+    for (let i = 0; i <= moveIndex; i++) {
+      tempGame.move(fullHistory[i]);
+    }
+    setPreviewGame(tempGame);
+    playSound('move');
+  }, [game, playSound]);
+
+  const exitPreview = () => {
+    setPreviewGame(null);
+  };
+
   const updateUndoState = useCallback((currentGame: Chess) => {
     // In AI mode, we undo both player and AI move, so we need at least 2 moves in history.
     // The game must also not be over.
@@ -156,7 +173,7 @@ export default function AiPlayPage() {
   }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (gameOver || game.turn() !== playerColor || isAiThinking) return false;
+    if (gameOver || game.turn() !== playerColor || isAiThinking || previewGame) return false;
     
     // Create a new game instance from the PGN to preserve history
     const tempGame = new Chess();
@@ -176,12 +193,13 @@ export default function AiPlayPage() {
 
     toast({ variant: "destructive", title: "Invalid Move" });
     return false;
-  }, [game, playerColor, toast, playSound, gameOver, isAiThinking]);
+  }, [game, playerColor, toast, playSound, gameOver, isAiThinking, previewGame]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
     setGame(newGame);
     setGameOver(null);
+    setPreviewGame(null);
     updateUndoState(newGame);
   }, [updateUndoState]);
   
@@ -191,7 +209,7 @@ export default function AiPlayPage() {
   }
   
   const handleUndo = useCallback(() => {
-    if (gameOver || !isUndoPossible || isAiThinking || isUndoing) return;
+    if (gameOver || !isUndoPossible || isAiThinking || isUndoing || previewGame) return;
   
     setIsUndoing(true);
   
@@ -210,10 +228,10 @@ export default function AiPlayPage() {
   
     // This is crucial to prevent the AI from moving again immediately.
     setTimeout(() => setIsUndoing(false), 0);
-  }, [game, gameOver, isAiThinking, isUndoPossible, playSound, updateUndoState, isUndoing]);
+  }, [game, gameOver, isAiThinking, isUndoPossible, playSound, updateUndoState, isUndoing, previewGame]);
   
   useEffect(() => {
-    if (isUndoing) return;
+    if (isUndoing || previewGame) return;
 
     const currentGame = new Chess();
     currentGame.loadPgn(game.pgn());
@@ -261,7 +279,10 @@ export default function AiPlayPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState, isUndoing]);
+  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState, isUndoing, previewGame]);
+
+  const displayGame = previewGame || game;
+  const isPreviewing = !!previewGame;
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
@@ -272,23 +293,32 @@ export default function AiPlayPage() {
             onClick={handleUndo} 
             className="w-full" 
             variant="outline" 
-            disabled={!isUndoPossible}
+            disabled={!isUndoPossible || isPreviewing}
           >
             <Undo2 className="mr-2 h-4 w-4" /> Undo Move
           </Button>
-          {!isUndoPossible && (
+          {!isUndoPossible && !isPreviewing && (
             <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
           )}
         </div>
-        <MoveHistory game={game} />
+        <MoveHistory game={game} onMoveSelect={handleMoveSelect} />
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center gap-4">
-        <GameStatus game={game} isThinking={isAiThinking} isAiMode={true} />
+        {isPreviewing && (
+            <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-sm font-medium text-accent">-- Preview Mode --</p>
+                <Button onClick={exitPreview} variant="outline" size="sm">
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Back to Current Game
+                </Button>
+            </div>
+        )}
+        <GameStatus game={displayGame} isThinking={isPreviewing ? false : isAiThinking} isAiMode={true} />
         <Chessboard 
-          game={game} 
+          game={displayGame} 
           onMove={handleMove} 
           boardOrientation={playerColor === 'w' ? 'white' : 'black'}
-          isInteractable={!game.isGameOver() && game.turn() === playerColor && !isAiThinking}
+          isInteractable={!isPreviewing && !game.isGameOver() && game.turn() === playerColor && !isAiThinking}
         />
       </div>
       <div className="w-full lg:w-64 order-3">
