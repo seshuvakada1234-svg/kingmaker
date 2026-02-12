@@ -53,9 +53,13 @@ export default function LocalPlayPage() {
   };
 
   const handlePreviewNext = () => {
-      if (previewIndex !== null && previewIndex < game.history().length - 1) {
-          handleMoveSelect(previewIndex + 1);
+    if (previewIndex !== null) {
+      if (previewIndex < game.history().length - 1) {
+        handleMoveSelect(previewIndex + 1);
+      } else {
+        exitPreview();
       }
+    }
   };
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
@@ -162,7 +166,7 @@ export default function LocalPlayPage() {
                         <XCircle className="mr-2 h-4 w-4" />
                         Back to Current Game
                     </Button>
-                    <Button onClick={handlePreviewNext} variant="outline" size="icon" disabled={previewIndex === game.history().length - 1}>
+                    <Button onClick={handlePreviewNext} variant="outline" size="icon">
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>

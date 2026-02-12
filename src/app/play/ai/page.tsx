@@ -179,8 +179,12 @@ export default function AiPlayPage() {
   };
 
   const handlePreviewNext = () => {
-    if (previewIndex !== null && previewIndex < game.history().length - 1) {
+    if (previewIndex !== null) {
+      if (previewIndex < game.history().length - 1) {
         handleMoveSelect(previewIndex + 1);
+      } else {
+        exitPreview();
+      }
     }
   };
 
@@ -337,7 +341,7 @@ export default function AiPlayPage() {
                         <XCircle className="mr-2 h-4 w-4" />
                         Back to Current Game
                     </Button>
-                    <Button onClick={handlePreviewNext} variant="outline" size="icon" disabled={previewIndex === game.history().length - 1}>
+                    <Button onClick={handlePreviewNext} variant="outline" size="icon">
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
