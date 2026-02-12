@@ -10,7 +10,7 @@ import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 import { Button } from '@/components/ui/button';
 import { Undo2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 /**
  * Determines the AI's next move based on the current game state and difficulty level.
@@ -142,8 +142,10 @@ const getAiMove = (game: Chess, level: number): Move | null => {
 export default function AiPlayPage() {
   const [game, setGame] = useState(new Chess());
   const [gameOver, setGameOver] = useState<string | null>(null);
-  const [previewGame, setPreviewGame] = useState<Chess | null>(null);
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  const history = useMemo(() => game.history({verbose: false}) as string[], [game]);
+  const [previewIndex, setPreviewIndex] = useState(history.length);
+
   const [playerColor] = useState<'w' | 'b'>('w');
   const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
@@ -152,39 +154,30 @@ export default function AiPlayPage() {
   const { playSound } = useSound();
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
-  const isPreviewing = useMemo(() => previewIndex !== null, [previewIndex]);
+  const isPreviewing = useMemo(() => previewIndex < history.length, [previewIndex, history]);
 
   const handleMoveSelect = useCallback((moveIndex: number) => {
-    const fullHistory = game.history();
-    if (moveIndex < 0 || moveIndex >= fullHistory.length) return;
-
-    const tempGame = new Chess();
-    for (let i = 0; i <= moveIndex; i++) {
-      tempGame.move(fullHistory[i]);
+    if (moveIndex >= 0 && moveIndex < history.length) {
+      setPreviewIndex(moveIndex);
+      playSound('move');
     }
-    setPreviewGame(tempGame);
-    setPreviewIndex(moveIndex);
-    playSound('move');
-  }, [game, playSound]);
+  }, [history, playSound]);
 
-  const exitPreview = () => {
-    setPreviewGame(null);
-    setPreviewIndex(null);
-  };
-  
+  const exitPreview = useCallback(() => {
+    setPreviewIndex(history.length);
+  }, [history]);
+
   const handlePreviewPrevious = () => {
-    if (previewIndex !== null && previewIndex > 0) {
-        handleMoveSelect(previewIndex - 1);
+    if (previewIndex > 0) {
+        setPreviewIndex(prev => prev - 1);
+        playSound('move');
     }
   };
 
   const handlePreviewNext = () => {
-    if (previewIndex !== null) {
-      if (previewIndex < game.history().length - 1) {
-        handleMoveSelect(previewIndex + 1);
-      } else {
-        exitPreview();
-      }
+    if (previewIndex < history.length) {
+      setPreviewIndex(prev => prev + 1);
+      playSound('move');
     }
   };
 
@@ -204,6 +197,7 @@ export default function AiPlayPage() {
     
     if (result) {
       setGame(tempGame);
+      setPreviewIndex(tempGame.history().length);
       // Undo state will be updated after the AI moves.
       if (result.flags.includes('c')) {
         playSound('capture');
@@ -221,8 +215,7 @@ export default function AiPlayPage() {
     const newGame = new Chess();
     setGame(newGame);
     setGameOver(null);
-    setPreviewGame(null);
-    setPreviewIndex(null);
+    setPreviewIndex(0);
     updateUndoState(newGame);
   }, [updateUndoState]);
   
@@ -245,6 +238,7 @@ export default function AiPlayPage() {
     gameCopy.undo();
   
     setGame(gameCopy);
+    setPreviewIndex(gameCopy.history().length);
     setGameOver(null);
     updateUndoState(gameCopy);
     playSound('move');
@@ -255,6 +249,10 @@ export default function AiPlayPage() {
   
   useEffect(() => {
     if (isUndoing || isPreviewing) return;
+    
+    if (previewIndex > history.length) {
+      setPreviewIndex(history.length);
+    }
 
     const currentGame = new Chess();
     currentGame.loadPgn(game.pgn());
@@ -291,6 +289,7 @@ export default function AiPlayPage() {
       if (aiMove) {
         const result = gameCopy.move(aiMove);
         setGame(gameCopy); // This will trigger useEffect again.
+        setPreviewIndex(gameCopy.history().length);
         if (result && result.flags.includes('c')) {
           playSound('capture');
         } else {
@@ -302,27 +301,36 @@ export default function AiPlayPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState, isUndoing, isPreviewing]);
+  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState, isUndoing, isPreviewing, history.length, previewIndex]);
 
-  const displayGame = previewGame || game;
+  const displayGame = useMemo(() => {
+    if (isPreviewing) {
+      const previewGameInstance = new Chess();
+      for (let i = 0; i <= previewIndex; i++) {
+        previewGameInstance.move(history[i]);
+      }
+      return previewGameInstance;
+    }
+    return game;
+  }, [game, history, previewIndex, isPreviewing]);
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4">
             <Button 
               onClick={handleUndo} 
               className="w-full" 
               variant="outline" 
-              disabled={!isUndoPossible || isPreviewing}
+              disabled={!isUndoPossible || isPreviewing || !!gameOver}
             >
               <Undo2 className="mr-2 h-4 w-4" /> Undo Move
             </Button>
           </CardHeader>
-          <CardContent>
-            {!isUndoPossible && !isPreviewing && (
+          <CardContent className="p-4 pt-0">
+            {!isUndoPossible && !isPreviewing && !gameOver && (
               <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
             )}
           </CardContent>

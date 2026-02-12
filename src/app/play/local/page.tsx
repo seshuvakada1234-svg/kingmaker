@@ -10,55 +10,48 @@ import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 import { Button } from '@/components/ui/button';
 import { Undo2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 
 export default function LocalPlayPage() {
   const [game, setGame] = useState(new Chess());
   const [gameOver, setGameOver] = useState<string | null>(null);
-  const [previewGame, setPreviewGame] = useState<Chess | null>(null);
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  
+  const history = useMemo(() => game.history({verbose: false}) as string[], [game]);
+  const [previewIndex, setPreviewIndex] = useState(history.length);
+
   const { toast } = useToast();
   const { playSound } = useSound();
   const [isUndoPossible, setIsUndoPossible] = useState(false);
 
-  const isPreviewing = useMemo(() => previewIndex !== null, [previewIndex]);
+  const isPreviewing = useMemo(() => previewIndex < history.length, [previewIndex, history]);
 
   const updateUndoState = useCallback((currentGame: Chess) => {
     setIsUndoPossible(currentGame.history().length >= 1 && !currentGame.isGameOver());
   }, []);
 
   const handleMoveSelect = useCallback((moveIndex: number) => {
-    const fullHistory = game.history();
-    if (moveIndex < 0 || moveIndex >= fullHistory.length) return;
-
-    const tempGame = new Chess();
-    for (let i = 0; i <= moveIndex; i++) {
-      tempGame.move(fullHistory[i]);
+    if (moveIndex >= 0 && moveIndex < history.length) {
+      setPreviewIndex(moveIndex);
+      playSound('move');
     }
-    setPreviewGame(tempGame);
-    setPreviewIndex(moveIndex);
-    playSound('move');
-  }, [game, playSound]);
+  }, [history, playSound]);
 
-  const exitPreview = () => {
-    setPreviewGame(null);
-    setPreviewIndex(null);
-  };
+  const exitPreview = useCallback(() => {
+    setPreviewIndex(history.length);
+  }, [history]);
   
   const handlePreviewPrevious = () => {
-    if (previewIndex !== null && previewIndex > 0) {
-        handleMoveSelect(previewIndex - 1);
+    if (previewIndex > 0) {
+        setPreviewIndex(prev => prev - 1);
+        playSound('move');
     }
   };
 
   const handlePreviewNext = () => {
-    if (previewIndex !== null) {
-      if (previewIndex < game.history().length - 1) {
-        handleMoveSelect(previewIndex + 1);
-      } else {
-        exitPreview();
-      }
+    if (previewIndex < history.length) {
+      setPreviewIndex(prev => prev + 1);
+      playSound('move');
     }
   };
 
@@ -71,6 +64,8 @@ export default function LocalPlayPage() {
 
     if (result) {
       setGame(tempGame);
+      // After a move, we are always in the live state
+      setPreviewIndex(tempGame.history().length);
       updateUndoState(tempGame);
       if (result.flags.includes('c')) {
         playSound('capture');
@@ -92,8 +87,7 @@ export default function LocalPlayPage() {
     const newGame = new Chess();
     setGame(newGame);
     setGameOver(null);
-    setPreviewGame(null);
-    setPreviewIndex(null);
+    setPreviewIndex(0);
     updateUndoState(newGame);
   }, [updateUndoState]);
 
@@ -105,15 +99,19 @@ export default function LocalPlayPage() {
     tempGame.undo();
     
     setGame(tempGame);
+    setPreviewIndex(tempGame.history().length);
     setGameOver(null);
     updateUndoState(tempGame);
     playSound('move');
   }, [game, gameOver, isUndoPossible, playSound, updateUndoState, isPreviewing]);
 
   useEffect(() => {
-    if (isPreviewing) return;
-
+    // Whenever game state changes, ensure preview doesn't point to a future that no longer exists
+    if (previewIndex > history.length) {
+      setPreviewIndex(history.length);
+    }
     updateUndoState(game);
+
     if (game.isGameOver()) {
       if (!gameOver) {
         if (game.isCheckmate()) {
@@ -127,27 +125,36 @@ export default function LocalPlayPage() {
     } else if (gameOver) {
         setGameOver(null);
     }
-  }, [game, playSound, gameOver, updateUndoState, isPreviewing]);
+  }, [game, playSound, gameOver, updateUndoState, previewIndex, history.length]);
 
-  const displayGame = previewGame || game;
+  const displayGame = useMemo(() => {
+    if (isPreviewing) {
+        const previewGameInstance = new Chess();
+        for (let i = 0; i <= previewIndex; i++) {
+            previewGameInstance.move(history[i]);
+        }
+        return previewGameInstance;
+    }
+    return game;
+  }, [game, history, previewIndex, isPreviewing]);
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4">
             <Button 
               onClick={handleUndo} 
               className="w-full" 
               variant="outline" 
-              disabled={!isUndoPossible || isPreviewing}
+              disabled={!isUndoPossible || isPreviewing || !!gameOver}
             >
               <Undo2 className="mr-2 h-4 w-4" /> Undo Move
             </Button>
           </CardHeader>
-          <CardContent>
-            {!isUndoPossible && !isPreviewing && (
+          <CardContent className="p-4 pt-0">
+            {!isUndoPossible && !isPreviewing && !gameOver && (
               <p className="text-xs text-muted-foreground text-center">Make a move to enable Undo.</p>
             )}
           </CardContent>
