@@ -142,6 +142,23 @@ export default function LocalPlayPage() {
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
       {gameOver && <GameOverScreen result={gameOver as any} onNewGame={resetGame} />}
       <div className="w-full lg:w-64 order-2 lg:order-1">
+        {isPreviewing && (
+            <div className="flex flex-col items-center gap-2 text-center mb-4">
+                <p className="text-sm font-medium text-accent">-- Preview Mode --</p>
+                <div className="flex items-center gap-4">
+                    <Button onClick={handlePreviewPrevious} variant="outline" size="icon" disabled={previewIndex === 0}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button onClick={exitPreview} variant="outline" size="sm">
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Back to Game
+                    </Button>
+                    <Button onClick={handlePreviewNext} variant="outline" size="icon">
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        )}
         <Card>
           <CardHeader className="p-4">
             <Button 
@@ -162,23 +179,6 @@ export default function LocalPlayPage() {
         <MoveHistory game={game} onMoveSelect={handleMoveSelect} />
       </div>
       <div className="order-1 lg:order-2 w-full lg:flex-1 flex flex-col items-center gap-4">
-        {isPreviewing && (
-            <div className="flex flex-col items-center gap-2 text-center">
-                <p className="text-sm font-medium text-accent">-- Preview Mode --</p>
-                <div className="flex items-center gap-4">
-                    <Button onClick={handlePreviewPrevious} variant="outline" size="icon" disabled={previewIndex === 0}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button onClick={exitPreview} variant="outline" size="sm">
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Back to Current Game
-                    </Button>
-                    <Button onClick={handlePreviewNext} variant="outline" size="icon">
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
-        )}
         <GameStatus game={displayGame} />
         <Chessboard 
           game={displayGame} 
