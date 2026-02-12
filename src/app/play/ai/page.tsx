@@ -133,7 +133,10 @@ const evaluateBoard = (game: Chess): number => {
 /**
  * The recursive Minimax function with Alpha-Beta pruning.
  */
-const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): number => {
+const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean, startTime: number, timeLimit: number): number | null => {
+  if (Date.now() - startTime > timeLimit) {
+    return null; // Signal timeout
+  }
   if (depth === 0 || game.isGameOver()) {
       return evaluateBoard(game);
   }
@@ -144,8 +147,9 @@ const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaxi
       let maxEval = -Infinity;
       for (const move of moves) {
           game.move(move.san);
-          const evalScore = minimax(game, depth - 1, alpha, beta, false);
+          const evalScore = minimax(game, depth - 1, alpha, beta, false, startTime, timeLimit);
           game.undo();
+          if (evalScore === null) return null; // Propagate timeout signal
           maxEval = Math.max(maxEval, evalScore);
           alpha = Math.max(alpha, evalScore);
           if (beta <= alpha) {
@@ -157,8 +161,9 @@ const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaxi
       let minEval = Infinity;
       for (const move of moves) {
           game.move(move.san);
-          const evalScore = minimax(game, depth - 1, alpha, beta, true);
+          const evalScore = minimax(game, depth - 1, alpha, beta, true, startTime, timeLimit);
           game.undo();
+          if (evalScore === null) return null; // Propagate timeout signal
           minEval = Math.min(minEval, evalScore);
           beta = Math.min(beta, evalScore);
           if (beta <= alpha) {
@@ -200,10 +205,16 @@ const getAiMove = (game: Chess, level: number): Move | null => {
   if (level >= 5) depth = 3; // Levels 5-7
   if (level >= 8) depth = 4; // Levels 8-10
 
+  const startTime = Date.now();
+  const timeLimit = 500; // 500ms
   const isMaximizingPlayer = game.turn() === 'w';
   const allMovesWithScores: {move: Move, score: number}[] = [];
 
   for (const move of moves) {
+    if (Date.now() - startTime > timeLimit) {
+      break; // Time's up, use what we have
+    }
+
     const gameCopy = new Chess();
     gameCopy.loadPgn(game.pgn());
     gameCopy.move(move.san);
@@ -214,7 +225,12 @@ const getAiMove = (game: Chess, level: number): Move | null => {
     }
 
     // Call the minimax function to evaluate the position after this move.
-    const boardValue = minimax(gameCopy, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+    const boardValue = minimax(gameCopy, depth - 1, -Infinity, Infinity, !isMaximizingPlayer, startTime, timeLimit);
+    
+    if (boardValue === null) {
+      break; // Timeout occurred in minimax, so stop evaluating more moves.
+    }
+    
     allMovesWithScores.push({ move, score: boardValue });
   }
 
@@ -410,7 +426,7 @@ export default function AiPlayPage() {
   const displayGame = useMemo(() => {
     if (isPreviewing) {
       const previewGameInstance = new Chess();
-      for (let i = 0; i <= previewIndex; i++) {
+      for (let i = 0; i < previewIndex; i++) {
         previewGameInstance.move(history[i]);
       }
       return previewGameInstance;
