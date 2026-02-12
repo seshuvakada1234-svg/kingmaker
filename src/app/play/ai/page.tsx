@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Chess, type Move, type Piece } from 'chess.js';
 import { Chessboard } from '@/components/game/Chessboard';
 import { GameStatus } from '@/components/game/GameStatus';
@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 import { Button } from '@/components/ui/button';
-import { Undo2, XCircle } from 'lucide-react';
+import { Undo2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
@@ -143,6 +143,7 @@ export default function AiPlayPage() {
   const [game, setGame] = useState(new Chess());
   const [gameOver, setGameOver] = useState<string | null>(null);
   const [previewGame, setPreviewGame] = useState<Chess | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [playerColor] = useState<'w' | 'b'>('w');
   const [aiLevel, setAiLevel] = useState<number>(1);
   const [isAiThinking, setIsAiThinking] = useState(false);
@@ -150,6 +151,8 @@ export default function AiPlayPage() {
   const { toast } = useToast();
   const { playSound } = useSound();
   const [isUndoPossible, setIsUndoPossible] = useState(false);
+
+  const isPreviewing = useMemo(() => previewIndex !== null, [previewIndex]);
 
   const handleMoveSelect = useCallback((moveIndex: number) => {
     const fullHistory = game.history();
@@ -160,11 +163,25 @@ export default function AiPlayPage() {
       tempGame.move(fullHistory[i]);
     }
     setPreviewGame(tempGame);
+    setPreviewIndex(moveIndex);
     playSound('move');
   }, [game, playSound]);
 
   const exitPreview = () => {
     setPreviewGame(null);
+    setPreviewIndex(null);
+  };
+  
+  const handlePreviewPrevious = () => {
+    if (previewIndex !== null && previewIndex > 0) {
+        handleMoveSelect(previewIndex - 1);
+    }
+  };
+
+  const handlePreviewNext = () => {
+    if (previewIndex !== null && previewIndex < game.history().length - 1) {
+        handleMoveSelect(previewIndex + 1);
+    }
   };
 
   const updateUndoState = useCallback((currentGame: Chess) => {
@@ -174,7 +191,7 @@ export default function AiPlayPage() {
   }, []);
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (gameOver || game.turn() !== playerColor || isAiThinking || previewGame) return false;
+    if (gameOver || game.turn() !== playerColor || isAiThinking || isPreviewing) return false;
     
     // Create a new game instance from the PGN to preserve history
     const tempGame = new Chess();
@@ -194,13 +211,14 @@ export default function AiPlayPage() {
 
     toast({ variant: "destructive", title: "Invalid Move" });
     return false;
-  }, [game, playerColor, toast, playSound, gameOver, isAiThinking, previewGame]);
+  }, [game, playerColor, toast, playSound, gameOver, isAiThinking, isPreviewing]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
     setGame(newGame);
     setGameOver(null);
     setPreviewGame(null);
+    setPreviewIndex(null);
     updateUndoState(newGame);
   }, [updateUndoState]);
   
@@ -210,7 +228,7 @@ export default function AiPlayPage() {
   }
   
   const handleUndo = useCallback(() => {
-    if (gameOver || !isUndoPossible || isAiThinking || isUndoing || previewGame) return;
+    if (gameOver || !isUndoPossible || isAiThinking || isUndoing || isPreviewing) return;
   
     setIsUndoing(true);
   
@@ -229,10 +247,10 @@ export default function AiPlayPage() {
   
     // This is crucial to prevent the AI from moving again immediately.
     setTimeout(() => setIsUndoing(false), 0);
-  }, [game, gameOver, isAiThinking, isUndoPossible, playSound, updateUndoState, isUndoing, previewGame]);
+  }, [game, gameOver, isAiThinking, isUndoPossible, playSound, updateUndoState, isUndoing, isPreviewing]);
   
   useEffect(() => {
-    if (isUndoing || previewGame) return;
+    if (isUndoing || isPreviewing) return;
 
     const currentGame = new Chess();
     currentGame.loadPgn(game.pgn());
@@ -280,10 +298,9 @@ export default function AiPlayPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState, isUndoing, previewGame]);
+  }, [game, playerColor, aiLevel, playSound, gameOver, updateUndoState, isUndoing, isPreviewing]);
 
   const displayGame = previewGame || game;
-  const isPreviewing = !!previewGame;
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
@@ -312,10 +329,18 @@ export default function AiPlayPage() {
         {isPreviewing && (
             <div className="flex flex-col items-center gap-2 text-center">
                 <p className="text-sm font-medium text-accent">-- Preview Mode --</p>
-                <Button onClick={exitPreview} variant="outline" size="sm">
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Back to Current Game
-                </Button>
+                <div className="flex items-center gap-4">
+                    <Button onClick={handlePreviewPrevious} variant="outline" size="icon" disabled={previewIndex === 0}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button onClick={exitPreview} variant="outline" size="sm">
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Back to Current Game
+                    </Button>
+                    <Button onClick={handlePreviewNext} variant="outline" size="icon" disabled={previewIndex === game.history().length - 1}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
         )}
         <GameStatus game={displayGame} isThinking={isPreviewing ? false : isAiThinking} isAiMode={true} />

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from '@/components/game/Chessboard';
 import { GameStatus } from '@/components/game/GameStatus';
@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/contexts/SoundContext';
 import { GameOverScreen } from '@/components/game/GameOverScreen';
 import { Button } from '@/components/ui/button';
-import { Undo2, XCircle } from 'lucide-react';
+import { Undo2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 
@@ -17,9 +17,12 @@ export default function LocalPlayPage() {
   const [game, setGame] = useState(new Chess());
   const [gameOver, setGameOver] = useState<string | null>(null);
   const [previewGame, setPreviewGame] = useState<Chess | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const { toast } = useToast();
   const { playSound } = useSound();
   const [isUndoPossible, setIsUndoPossible] = useState(false);
+
+  const isPreviewing = useMemo(() => previewIndex !== null, [previewIndex]);
 
   const updateUndoState = useCallback((currentGame: Chess) => {
     setIsUndoPossible(currentGame.history().length >= 1 && !currentGame.isGameOver());
@@ -34,15 +37,29 @@ export default function LocalPlayPage() {
       tempGame.move(fullHistory[i]);
     }
     setPreviewGame(tempGame);
+    setPreviewIndex(moveIndex);
     playSound('move');
   }, [game, playSound]);
 
   const exitPreview = () => {
     setPreviewGame(null);
+    setPreviewIndex(null);
+  };
+  
+  const handlePreviewPrevious = () => {
+    if (previewIndex !== null && previewIndex > 0) {
+        handleMoveSelect(previewIndex - 1);
+    }
+  };
+
+  const handlePreviewNext = () => {
+      if (previewIndex !== null && previewIndex < game.history().length - 1) {
+          handleMoveSelect(previewIndex + 1);
+      }
   };
 
   const handleMove = useCallback((move: { from: string; to: string; promotion?: string }): boolean => {
-    if (gameOver || previewGame) return false;
+    if (gameOver || isPreviewing) return false;
     
     const tempGame = new Chess();
     tempGame.loadPgn(game.pgn());
@@ -65,18 +82,19 @@ export default function LocalPlayPage() {
       description: "That move is not allowed.",
     });
     return false;
-  }, [game, toast, playSound, gameOver, updateUndoState, previewGame]);
+  }, [game, toast, playSound, gameOver, updateUndoState, isPreviewing]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
     setGame(newGame);
     setGameOver(null);
     setPreviewGame(null);
+    setPreviewIndex(null);
     updateUndoState(newGame);
   }, [updateUndoState]);
 
   const handleUndo = useCallback(() => {
-    if (gameOver || !isUndoPossible || previewGame) return;
+    if (gameOver || !isUndoPossible || isPreviewing) return;
     
     const tempGame = new Chess();
     tempGame.loadPgn(game.pgn());
@@ -86,10 +104,10 @@ export default function LocalPlayPage() {
     setGameOver(null);
     updateUndoState(tempGame);
     playSound('move');
-  }, [game, gameOver, isUndoPossible, playSound, updateUndoState, previewGame]);
+  }, [game, gameOver, isUndoPossible, playSound, updateUndoState, isPreviewing]);
 
   useEffect(() => {
-    if (previewGame) return;
+    if (isPreviewing) return;
 
     updateUndoState(game);
     if (game.isGameOver()) {
@@ -105,10 +123,9 @@ export default function LocalPlayPage() {
     } else if (gameOver) {
         setGameOver(null);
     }
-  }, [game, playSound, gameOver, updateUndoState, previewGame]);
+  }, [game, playSound, gameOver, updateUndoState, isPreviewing]);
 
   const displayGame = previewGame || game;
-  const isPreviewing = !!previewGame;
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-4 md:gap-8 items-start w-full max-w-7xl mx-auto">
@@ -137,10 +154,18 @@ export default function LocalPlayPage() {
         {isPreviewing && (
             <div className="flex flex-col items-center gap-2 text-center">
                 <p className="text-sm font-medium text-accent">-- Preview Mode --</p>
-                <Button onClick={exitPreview} variant="outline" size="sm">
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Back to Current Game
-                </Button>
+                <div className="flex items-center gap-4">
+                    <Button onClick={handlePreviewPrevious} variant="outline" size="icon" disabled={previewIndex === 0}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button onClick={exitPreview} variant="outline" size="sm">
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Back to Current Game
+                    </Button>
+                    <Button onClick={handlePreviewNext} variant="outline" size="icon" disabled={previewIndex === game.history().length - 1}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
         )}
         <GameStatus game={displayGame} />
