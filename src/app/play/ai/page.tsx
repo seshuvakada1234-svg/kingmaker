@@ -12,6 +12,163 @@ import { Button } from '@/components/ui/button';
 import { Undo2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
+// --- AI Logic ---
+
+const pieceValues: { [key in Piece['type']]: number } = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+
+// Piece-Square Tables (from White's perspective) give bonuses based on piece position.
+const pawnPST = [
+  0,  0,  0,  0,  0,  0,  0,  0,
+  50, 50, 50, 50, 50, 50, 50, 50,
+  10, 10, 20, 30, 30, 20, 10, 10,
+   5,  5, 10, 25, 25, 10,  5,  5,
+   0,  0,  0, 20, 20,  0,  0,  0,
+   5, -5,-10,  0,  0,-10, -5,  5,
+   5, 10, 10,-20,-20, 10, 10,  5,
+   0,  0,  0,  0,  0,  0,  0,  0
+];
+const knightPST = [
+  -50,-40,-30,-30,-30,-30,-40,-50,
+  -40,-20,  0,  0,  0,  0,-20,-40,
+  -30,  0, 10, 15, 15, 10,  0,-30,
+  -30,  5, 15, 20, 20, 15,  5,-30,
+  -30,  0, 15, 20, 20, 15,  0,-30,
+  -30,  5, 10, 15, 15, 10,  5,-30,
+  -40,-20,  0,  5,  5,  0,-20,-40,
+  -50,-40,-30,-30,-30,-30,-40,-50,
+];
+const bishopPST = [
+  -20,-10,-10,-10,-10,-10,-10,-20,
+  -10,  0,  0,  0,  0,  0,  0,-10,
+  -10,  0,  5, 10, 10,  5,  0,-10,
+  -10,  5,  5, 10, 10,  5,  5,-10,
+  -10,  0, 10, 10, 10, 10,  0,-10,
+  -10, 10, 10, 10, 10, 10, 10,-10,
+  -10,  5,  0,  0,  0,  0,  5,-10,
+  -20,-10,-10,-10,-10,-10,-10,-20,
+];
+const rookPST = [
+   0,  0,  0,  0,  0,  0,  0,  0,
+   5, 10, 10, 10, 10, 10, 10,  5,
+  -5,  0,  0,  0,  0,  0,  0, -5,
+  -5,  0,  0,  0,  0,  0,  0, -5,
+  -5,  0,  0,  0,  0,  0,  0, -5,
+  -5,  0,  0,  0,  0,  0,  0, -5,
+  -5,  0,  0,  0,  0,  0,  0, -5,
+   0,  0,  0,  5,  5,  0,  0,  0
+];
+const queenPST = [
+  -20,-10,-10, -5, -5,-10,-10,-20,
+  -10,  0,  0,  0,  0,  0,  0,-10,
+  -10,  0,  5,  5,  5,  5,  0,-10,
+   -5,  0,  5,  5,  5,  5,  0, -5,
+    0,  0,  5,  5,  5,  5,  0,  0,
+  -10,  5,  5,  5,  5,  5,  0,-10,
+  -10,  0,  5,  0,  0,  0,  0,-10,
+  -20,-10,-10, -5, -5,-10,-10,-20
+];
+const kingPST = [ // Mid-game king safety
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -20,-30,-30,-40,-40,-30,-30,-20,
+  -10,-20,-20,-20,-20,-20,-20,-10,
+   20, 20,  0,  0,  0,  0, 20, 20,
+   20, 30, 10,  0,  0, 10, 30, 20
+];
+
+/**
+ * Evaluates the board state and returns a score.
+ * Positive scores favor White, negative scores favor Black.
+ * @param game The current chess.js game instance.
+ * @returns A number representing the board score.
+ */
+const evaluateBoard = (game: Chess): number => {
+  if (game.isCheckmate()) {
+      return game.turn() === 'w' ? -Infinity : Infinity;
+  }
+  if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
+      return 0;
+  }
+
+  let score = 0;
+  const board = game.board();
+
+  for (let i = 0; i < 8; i++) {
+      for (let j = 0; j < 8; j++) {
+          const piece = board[i][j];
+          if (piece) {
+              const value = pieceValues[piece.type];
+              let pst;
+              switch(piece.type) {
+                  case 'p': pst = pawnPST; break;
+                  case 'n': pst = knightPST; break;
+                  case 'b': pst = bishopPST; break;
+                  case 'r': pst = rookPST; break;
+                  case 'q': pst = queenPST; break;
+                  case 'k': pst = kingPST; break;
+                  default: pst = [];
+              }
+
+              const squareIndex = i * 8 + j;
+              // For black pieces, the PST is mirrored vertically.
+              const pstIndex = piece.color === 'w' ? squareIndex : 63 - squareIndex;
+              const pstValue = pst[pstIndex] || 0;
+
+              const pieceScore = piece.color === 'w' ? value + pstValue : -(value + pstValue);
+              score += pieceScore;
+          }
+      }
+  }
+
+  // Add a simple mobility score (number of legal moves)
+  const mobility = game.moves().length;
+  const mobilityScore = game.turn() === 'w' ? mobility : -mobility;
+  score += mobilityScore;
+
+  return score;
+};
+
+/**
+ * The recursive Minimax function with Alpha-Beta pruning.
+ */
+const minimax = (game: Chess, depth: number, alpha: number, beta: number, isMaximizingPlayer: boolean): number => {
+  if (depth === 0 || game.isGameOver()) {
+      return evaluateBoard(game);
+  }
+
+  const moves = game.moves({ verbose: true });
+
+  if (isMaximizingPlayer) {
+      let maxEval = -Infinity;
+      for (const move of moves) {
+          game.move(move.san);
+          const evalScore = minimax(game, depth - 1, alpha, beta, false);
+          game.undo();
+          maxEval = Math.max(maxEval, evalScore);
+          alpha = Math.max(alpha, evalScore);
+          if (beta <= alpha) {
+              break; // Beta cutoff
+          }
+      }
+      return maxEval;
+  } else {
+      let minEval = Infinity;
+      for (const move of moves) {
+          game.move(move.san);
+          const evalScore = minimax(game, depth - 1, alpha, beta, true);
+          game.undo();
+          minEval = Math.min(minEval, evalScore);
+          beta = Math.min(beta, evalScore);
+          if (beta <= alpha) {
+              break; // Alpha cutoff
+          }
+      }
+      return minEval;
+  }
+};
+
 /**
  * Determines the AI's next move based on the current game state and difficulty level.
  * @param game The current chess.js game instance.
@@ -21,121 +178,68 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 const getAiMove = (game: Chess, level: number): Move | null => {
   const moves = game.moves({ verbose: true });
   if (moves.length === 0) {
-    return null; // Game is over, no more moves.
+    return null;
   }
 
-  // Level 1-2: Purely random moves.
-  if (level <= 2) {
+  // Level 1: Purely random moves.
+  if (level <= 1) {
     return moves[Math.floor(Math.random() * moves.length)];
   }
 
-  // Level 3-4: Prefer captures, otherwise random.
-  if (level <= 4) {
+  // Level 2: Prefer captures, otherwise random.
+  if (level <= 2) {
     const captureMoves = moves.filter((m) => m.flags.includes('c'));
     if (captureMoves.length > 0) {
       return captureMoves[Math.floor(Math.random() * captureMoves.length)];
     }
     return moves[Math.floor(Math.random() * moves.length)];
   }
+  
+  // Map difficulty level to search depth for Minimax
+  let depth = 2; // Default for Levels 3-4
+  if (level >= 5) depth = 3; // Levels 5-7
+  if (level >= 8) depth = 4; // Levels 8-10
 
-  // Level 5-6: Prefer captures and checks, otherwise random.
-  if (level <= 6) {
-    const captureMoves = moves.filter((m) => m.flags.includes('c'));
-    // A move is a checking move if the SAN string includes a '+' or '#'
-    const checkMoves = moves.filter((m) => m.san.includes('+') || m.san.includes('#'));
-    const goodMoves = [...new Set([...captureMoves, ...checkMoves])];
-    if (goodMoves.length > 0) {
-      return goodMoves[Math.floor(Math.random() * goodMoves.length)];
+  const isMaximizingPlayer = game.turn() === 'w';
+  const allMovesWithScores: {move: Move, score: number}[] = [];
+
+  for (const move of moves) {
+    const gameCopy = new Chess();
+    gameCopy.loadPgn(game.pgn());
+    gameCopy.move(move.san);
+
+    // If a move is an immediate checkmate, take it.
+    if (gameCopy.isCheckmate()) {
+      return move;
     }
-    return moves[Math.floor(Math.random() * moves.length)];
+
+    // Call the minimax function to evaluate the position after this move.
+    const boardValue = minimax(gameCopy, depth - 1, -Infinity, Infinity, !isMaximizingPlayer);
+    allMovesWithScores.push({ move, score: boardValue });
   }
 
-  // For levels 7+, we need an evaluation function.
-  const pieceValues: { [key in Piece['type']]: number } = { p: 1, n: 3, b: 3.2, r: 5, q: 9, k: 0 };
+  // Sort moves based on score (descending for white, ascending for black)
+  allMovesWithScores.sort((a, b) => isMaximizingPlayer ? b.score - a.score : a.score - b.score);
   
-  const evaluateBoard = (board: (Piece | null)[][]) => {
-    let score = 0;
-    for (const row of board) {
-      for (const piece of row) {
-        if (piece) {
-          const value = pieceValues[piece.type];
-          if (piece.color === 'w') {
-            score += value;
-          } else {
-            score -= value;
-          }
-        }
-      }
-    }
-    return score;
-  };
-  
-  const isWhiteTurn = game.turn() === 'w';
-
-  // For levels 7-8, find the best move with depth 1 search.
-  if (level <= 8) {
-    let bestMove: Move | null = null;
-    let bestValue = isWhiteTurn ? -Infinity : Infinity;
-
-    for (const move of moves) {
-      const gameCopy = new Chess();
-      gameCopy.loadPgn(game.pgn());
-      gameCopy.move(move);
-      
-      // If this move is checkmate, it's the best one.
-      if (gameCopy.isCheckmate()) {
-          return move;
-      }
-      
-      const boardValue = evaluateBoard(gameCopy.board());
-
-      if (isWhiteTurn) {
-        if (boardValue > bestValue) {
-          bestValue = boardValue;
-          bestMove = move;
-        }
-      } else { // Black's turn
-        if (boardValue < bestValue) {
-          bestValue = boardValue;
-          bestMove = move;
-        }
-      }
-    }
-    return bestMove || moves[0];
+  if (allMovesWithScores.length === 0) {
+    return moves[Math.floor(Math.random() * moves.length)]; // Fallback
   }
 
-  // For levels 9-10, choose from the top 3 best moves.
-  if (level <= 10) {
-      const moveEvaluations: {move: Move, score: number}[] = [];
-      for (const move of moves) {
-        const gameCopy = new Chess();
-        gameCopy.loadPgn(game.pgn());
-        gameCopy.move(move);
-
-        if (gameCopy.isCheckmate()) {
-          return move; // Immediate win is best
-        }
-        
-        moveEvaluations.push({move, score: evaluateBoard(gameCopy.board())});
-      }
-
-      // Sort by score (desc for white, asc for black)
-      moveEvaluations.sort((a, b) => isWhiteTurn ? b.score - a.score : a.score - b.score);
-
-      const topMoves = moveEvaluations.slice(0, 3).map(m => m.move);
-      if (topMoves.length === 0) return moves[Math.floor(Math.random() * moves.length)];
-      
-      // At level 10, 80% chance to pick the absolute best move.
-      if (level === 10 && Math.random() > 0.2) { 
-          return topMoves[0];
-      }
-      
-      // For level 9 (and 20% of level 10), pick randomly from the top 3.
-      return topMoves[Math.floor(Math.random() * topMoves.length)];
+  // For lower levels, introduce randomness by picking from a pool of good moves.
+  if (level <= 4) { // Levels 3-4: Pick from top 5 rated moves
+      const topMoves = allMovesWithScores.slice(0, 5).map(m => m.move);
+      return topMoves[Math.floor(Math.random() * topMoves.length)] || moves[0];
+  }
+  if (level <= 7) { // Levels 5-7: Pick from top 3 rated moves
+      const topMoves = allMovesWithScores.slice(0, 3).map(m => m.move);
+      return topMoves[Math.floor(Math.random() * topMoves.length)] || moves[0];
   }
   
-  // Fallback for any case not covered.
-  return moves[Math.floor(Math.random() * moves.length)];
+  // Levels 8-10: 90% chance to pick the best move, 10% for the second best.
+  if (Math.random() > 0.1 || allMovesWithScores.length < 2) {
+      return allMovesWithScores[0].move;
+  }
+  return allMovesWithScores[1].move;
 };
 
 
